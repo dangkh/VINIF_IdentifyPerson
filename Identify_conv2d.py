@@ -1,14 +1,7 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 import mne
-from mne import io
-from mne.datasets import sample
-from scipy.spatial import distance as dist
 import matplotlib.pyplot as plt
-import cv2
-import imutils
-from imutils import face_utils
 import time
 
 import os 
@@ -23,6 +16,6 @@ def checkSubFolder(path):
 			list_subject.append(subPath)
 
 if __name__ == "__main__":
-	checkSubFolder("/content/drive/MyDrive/DataVIN")
-	checkSubFolder("/content/drive/MyDrive/DataVIN/Official")
+	checkSubFolder("/mnt/hdd/VINIF/DataVIN")
+	checkSubFolder("/mnt/hdd/VINIF/DataVIN/Official")
 	print(list_subject)
