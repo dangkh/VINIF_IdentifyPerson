@@ -30,20 +30,20 @@ if __name__ == "__main__":
 	print("read data")	
 	idEpoch = []
 	for idx, eeg in data:
-	list_thinking = []
-	annos = eeg.annotations
-	if len(annos) > 0:
-		for idy in range(len(annos)):
-			if annos[idy]['description'] == "Thinking":
-				onset = annos[idy]['onset']
-				duration = annos[idy]['duration']
-				# print(onset, duration)
-				tmp = eeg.copy().crop(onset, onset + duration)
-				tmp = tmp.to_data_frame()
-				matrix = tmp.iloc[:, 1:].to_numpy()
-				endMatrix = np.copy(matrix[:, 27:32])
-				newmatrix = np.hstack([endMatrix, matrix])
-				idEpoch.append([idx, newmatrix])
+		list_thinking = []
+		annos = eeg.annotations
+		if len(annos) > 0:
+			for idy in range(len(annos)):
+				if annos[idy]['description'] == "Thinking":
+					onset = annos[idy]['onset']
+					duration = annos[idy]['duration']
+					# print(onset, duration)
+					tmp = eeg.copy().crop(onset, onset + duration)
+					tmp = tmp.to_data_frame()
+					matrix = tmp.iloc[:, 1:].to_numpy()
+					endMatrix = np.copy(matrix[:, 27:32])
+					newmatrix = np.hstack([endMatrix, matrix])
+					idEpoch.append([idx, newmatrix])
 
 	targets = []
 	datas = []
