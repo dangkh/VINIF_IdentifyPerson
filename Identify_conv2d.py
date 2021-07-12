@@ -23,7 +23,6 @@ def checkSubFolder(path):
 			list_subject.append(subPath)
 
 if __name__ == "__main__":
-    checkSubFolder("/content/drive/MyDrive/DataVIN")
+	checkSubFolder("/content/drive/MyDrive/DataVIN")
 	checkSubFolder("/content/drive/MyDrive/DataVIN/Official")
-
 	print(list_subject)
