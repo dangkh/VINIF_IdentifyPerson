@@ -15,18 +15,18 @@ list_subject = []
 if __name__ == "__main__":
 	checkSubFolder("/mnt/hdd/VINIF/DataVIN")
 	checkSubFolder("/mnt/hdd/VINIF/DataVIN/Official")
-	print("list subject: "list_subject)
+	print("list subject: ", list_subject)
 	data = []
 	target_subject = 0
 	for idx, subject in enumerate(list_subject):
-  	samples = os.listdir(subject)
-	for sample in samples:
-		samplePath = subject + '/' + sample + '/'
-		if os.path.isdir(samplePath):
-			tmp = sample[-1:]
-			eeg_raw = mne.io.read_raw_edf(samplePath + "/EEG.edf")
-			eeg_data_new = eeg_raw.copy().load_data()
-			data.append([idx, eeg_data_new])
+	  	samples = os.listdir(subject)
+		for sample in samples:
+			samplePath = subject + '/' + sample + '/'
+			if os.path.isdir(samplePath):
+				tmp = sample[-1:]
+				eeg_raw = mne.io.read_raw_edf(samplePath + "/EEG.edf")
+				eeg_data_new = eeg_raw.copy().load_data()
+				data.append([idx, eeg_data_new])
 	print("read data")	
 	idEpoch = []
 	for idx, eeg in data:
