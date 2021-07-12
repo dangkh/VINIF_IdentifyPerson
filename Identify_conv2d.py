@@ -114,47 +114,47 @@ if __name__ == "__main__":
 	lacc = []
 
 	for epoch in range(n_epochs):  # loop over the dataset multiple times
-	model.train()
-	print("epoch:     ", epoch)
-	running_loss = 0.0
-	total_loss = 0
-	for i, data in enumerate(train_loader_simple):
-		# get the inputs; data is a list of [inputs, labels]
-		inputs, labels = data
-		# CUDA
-		if torch.cuda.is_available():
-		  inputs = inputs.cuda()
-		  labels = labels.cuda()
-		# zero the parameter gradients
-		optimizer.zero_grad()
-
-		# forward + backward + optimize
-		outputs = model(inputs)
-		loss = criterion(outputs, labels)
-		loss.backward()
-		optimizer.step()
-
-		# print statistics
-		running_loss += loss.item()
-		total_loss += loss.item()
-		if i % 50 == 49:    # print every 200 mini-batches
-			print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 50))
-			running_loss = 0.0
-		mean_loss = total_loss / len(train_loader_simple)
-		llos.append(mean_loss)
-		counter = 0
-		for idx, data in enumerate(train_loader_simple):
-			xx, yy = data
+		model.train()
+		print("epoch:     ", epoch)
+		running_loss = 0.0
+		total_loss = 0
+		for i, data in enumerate(train_loader_simple):
+			# get the inputs; data is a list of [inputs, labels]
+			inputs, labels = data
+			# CUDA
 			if torch.cuda.is_available():
-				xx = xx.cuda()
-				yy = yy.cuda()
-			with torch.no_grad():
-				model.eval()
-				pred = model(xx)
-				res = torch.argmax(pred, 1)
-				for i, ypred in  enumerate(res):
-					if ypred == yy[i].item():
-						counter += 1
+			  inputs = inputs.cuda()
+			  labels = labels.cuda()
+			# zero the parameter gradients
+			optimizer.zero_grad()
+
+			# forward + backward + optimize
+			outputs = model(inputs)
+			loss = criterion(outputs, labels)
+			loss.backward()
+			optimizer.step()
+
+			# print statistics
+			running_loss += loss.item()
+			total_loss += loss.item()
+			if i % 50 == 49:    # print every 200 mini-batches
+				print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 50))
+				running_loss = 0.0
+			mean_loss = total_loss / len(train_loader_simple)
+			llos.append(mean_loss)
+			counter = 0
+			for idx, data in enumerate(train_loader_simple):
+				xx, yy = data
+				if torch.cuda.is_available():
+					xx = xx.cuda()
+					yy = yy.cuda()
+				with torch.no_grad():
+					model.eval()
+					pred = model(xx)
+					res = torch.argmax(pred, 1)
+					for i, ypred in  enumerate(res):
+						if ypred == yy[i].item():
+							counter += 1
 		acc = counter / len(X_train)
 		lacc.append(acc)
 	print('Finished Training')
@@ -162,17 +162,17 @@ if __name__ == "__main__":
 	counter = 0
 	total = 0
 	for idx, data in enumerate(test_loader_simple):
-	xx, yy = data
-	total += len(yy)
-	# cuda
-	if torch.cuda.is_available():
-		xx = xx.cuda()
-	with torch.no_grad():
-		model.eval()
-		pred = model(xx)
-		res = torch.argmax(pred, 1)
-		for id, ypred in enumerate(res):
-			if ypred == yy[id].item():
-				counter += 1
+		xx, yy = data
+		total += len(yy)
+		# cuda
+		if torch.cuda.is_available():
+			xx = xx.cuda()
+		with torch.no_grad():
+			model.eval()
+			pred = model(xx)
+			res = torch.argmax(pred, 1)
+			for id, ypred in enumerate(res):
+				if ypred == yy[id].item():
+					counter += 1
 	# print(counter / total, counter, total)    
 	print('acc: {:1f}%'.format(100 * counter / total))
