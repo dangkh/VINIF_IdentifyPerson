@@ -19,7 +19,7 @@ if __name__ == "__main__":
 	data = []
 	target_subject = 0
 	for idx, subject in enumerate(list_subject):
-	  	samples = os.listdir(subject)
+		samples = os.listdir(subject)
 		for sample in samples:
 			samplePath = subject + '/' + sample + '/'
 			if os.path.isdir(samplePath):
