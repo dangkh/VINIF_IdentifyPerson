@@ -5,12 +5,12 @@ import torch
 class LSTMNet(nn.Module):
     def __init__(self, n_classes):
         super(LSTMNet, self).__init__()
-        self.drop1 = nn.Dropout(0.5)
+        self.drop1 = nn.Dropout(0.75)
         self.drop2 = nn.Dropout(0.5)
         self.fc1 = nn.Linear(60000, 2)
         self.n_classes = n_classes
         self.fc2 = nn.Linear(2, n_classes)
-        self.conv = nn.Conv2d(1, 16, [3, 10])
+        self.conv = nn.Conv2d(1, 32, [3, 10])
         self.lstm = nn.LSTM(28, 15, bidirectional=True, batch_first=True)
 
     def forward(self, x):
