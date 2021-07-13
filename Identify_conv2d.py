@@ -144,21 +144,21 @@ if __name__ == "__main__":
 				running_loss = 0.0
 			mean_loss = total_loss / len(train_loader_simple)
 			llos.append(mean_loss)
-			counter = 0
-			for idx, data in enumerate(train_loader_simple):
-				xx, yy = data
-				if torch.cuda.is_available():
-					xx = xx.cuda()
-					yy = yy.cuda()
-				with torch.no_grad():
-					model.eval()
-					pred = model(xx)
-					res = torch.argmax(pred, 1)
-					for i, ypred in  enumerate(res):
-						if ypred == yy[i].item():
-							counter += 1
-			acc = counter / len(X_train)
-			lacc.append(acc)
+			# counter = 0
+			# for idx, data in enumerate(train_loader_simple):
+			# 	xx, yy = data
+			# 	if torch.cuda.is_available():
+			# 		xx = xx.cuda()
+			# 		yy = yy.cuda()
+			# 	with torch.no_grad():
+			# 		model.eval()
+			# 		pred = model(xx)
+			# 		res = torch.argmax(pred, 1)
+			# 		for i, ypred in  enumerate(res):
+			# 			if ypred == yy[i].item():
+			# 				counter += 1
+			# acc = counter / len(X_train)
+			# lacc.append(acc)
 	print('Finished Training')
 
 	counter = 0
