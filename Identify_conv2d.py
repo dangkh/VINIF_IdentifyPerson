@@ -110,7 +110,7 @@ if __name__ == "__main__":
 	lr = 1e-4
 	optimizer = optim.Adam(model.parameters(), lr=lr)
 	scheduler = lr_scheduler.StepLR(optimizer, 8, gamma=0.2, last_epoch=-1)
-	n_epochs = 100
+	n_epochs = 200
 	log_interval = 50
 	llos = []
 	lacc = []
@@ -178,3 +178,6 @@ if __name__ == "__main__":
 					counter += 1
 	# print(counter / total, counter, total)    
 	print('acc: {:1f}%'.format(100 * counter / total))
+	t = [x for x in range(len(llos))]
+	plt.plot(t, llos, 'red')
+	
