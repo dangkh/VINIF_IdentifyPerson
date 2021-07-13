@@ -9,12 +9,14 @@ import os
 from ultis import *
 from sklearn.model_selection import train_test_split
 from nets import *
+import torch
 
 list_subject = []
 
 if __name__ == "__main__":
-	checkSubFolder("/mnt/hdd/VINIF/DataVIN")
-	checkSubFolder("/mnt/hdd/VINIF/DataVIN/Official")
+
+	list_subject = checkSubFolder("/mnt/hdd/VINIF/DataVIN")
+	list_subject.extend(checkSubFolder("/mnt/hdd/VINIF/DataVIN/Official"))
 	print("list subject: ", list_subject)
 	data = []
 	target_subject = 0
@@ -113,9 +115,9 @@ if __name__ == "__main__":
 	llos = []
 	lacc = []
 
-	for epoch in range(n_epochs):  # loop over the dataset multiple times
+        for epoch in range(n_epochs):
 		model.train()
-		print("epoch:     ", epoch)
+		print("epoch :     ", epoch)
 		running_loss = 0.0
 		total_loss = 0
 		for i, data in enumerate(train_loader_simple):

@@ -1,6 +1,8 @@
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 import torch
+import os
+import numpy as np
 
 class EEG_data(Dataset):
     """EEG_data set"""
@@ -39,12 +41,14 @@ def plot_embeddings(embeddings, targets, xlim=None, ylim=None):
     plt.legend(tmp)
 
 def checkSubFolder(path):
+    list_sub = []
     subs = os.listdir(path)
     for sub in subs:
         subPath = path + '/'+ sub
         infoPath = path + '/' + sub + '/info.json'
         if os.path.isfile(infoPath) and os.path.isdir(subPath):
-            list_subject.append(subPath)
+            list_sub.append(subPath)
+    return list_sub
 
 
 def chunk(matrix, step_size = 128, window_size = 128):
@@ -71,7 +75,7 @@ def chunk_matrix(list_data, list_target, step_size = 32, window_size = 128):
         y_matries = [list_target[idx].astype(int)] * len(matries)
         list_ys.extend(y_matries)
 
-  return list_matries, list_ys
+    return list_matries, list_ys
 
 def addNoise(data, target):
     list_newdata = []
@@ -85,7 +89,7 @@ def addNoise(data, target):
         list_newdata.append(newmatrix)
         # tmpTarget[target[idx]] = 1
         list_newtarget.append(target[idx])
-  return list_newdata, list_newtarget
+    return list_newdata, list_newtarget
 
 def randomRemoveSample(data, target):
     list_newdata = []
@@ -103,7 +107,7 @@ def randomRemoveSample(data, target):
         # print(matrix.shape)
         list_newdata.append(matrix)
         list_newtarget.append(target[idx])
-  return list_newdata, list_newtarget
+    return list_newdata, list_newtarget
 
 def randomSwapSample(data, target):
     list_newdata = []

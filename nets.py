@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
-    
+import torch
+
 class LSTMNet(nn.Module):
     def __init__(self, n_classes):
         super(LSTMNet, self).__init__()
