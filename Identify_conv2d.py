@@ -115,7 +115,7 @@ if __name__ == "__main__":
 	llos = []
 	lacc = []
 
-        for epoch in range(n_epochs):
+	for epoch in range(n_epochs):
 		model.train()
 		print("epoch :     ", epoch)
 		running_loss = 0.0
@@ -157,8 +157,8 @@ if __name__ == "__main__":
 					for i, ypred in  enumerate(res):
 						if ypred == yy[i].item():
 							counter += 1
-		acc = counter / len(X_train)
-		lacc.append(acc)
+			acc = counter / len(X_train)
+			lacc.append(acc)
 	print('Finished Training')
 
 	counter = 0
