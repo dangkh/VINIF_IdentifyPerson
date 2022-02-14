@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 import mne
 from mne import io
@@ -15,6 +16,25 @@ import torch
 import sys
 from ultis import *
 from nets import *
+import pickle
+
+
+paramsCNN2D = {'conv_channels': [
+            [1, 16, 8],
+            [1, 16, 32],
+            [1, 64, 32, 16, 8],
+            [1, 128, 64, 32, 16, 8],
+            [1, 256, 128, 64, 32, 16, 8]
+        ],
+            'kernel_size': [[(h1, w1 * width), (h1, w1 * width), (h1, w1 * width),
+                             (h1, w1 * width), (h1, w1 * width), (h1, w1 * width)],
+
+                            [(h2 * height, w2), (h2 * height, w2), (h2 * height, w2),
+                             (h2 * height, w2), (h2 * height, w2), (h2 * height, w2)],
+
+                            [(h3, w3 * width), (h3, w3 * width), (h3, w3 * width),
+                             (h3, w3 * width), (h3, w3 * width), (h3, w3 * width)]]
+        }
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -35,7 +55,7 @@ def subInVIN():
     list_dir = []
     # list_dir.extend(checkSubFolder("/mnt/hdd/VINIF/DataVIN"))
     # list_dir.extend(checkSubFolder("/mnt/hdd/VINIF/DataVIN/Official"))
-    prePath = "/mnt/hdd/VINIF/DataVIN"
+    prePath = "../DataVIN/"
     # listPaths = ['HMI09', 'HMI10', 'HMI11', 'HMI13', 'HMI15', 'Official/BN001', 
     #  'Official/BN002', 'Official/K299', 'Official/K300', 'Official/BN003']
     # listPaths = ['HMI10', 'HMI11', 'HMI13', 'HMI15', 'BV103_01', 'Official/BN001', 
@@ -266,9 +286,9 @@ def vis():
 
 if __name__ == "__main__":
     listPaths = []
-    numberObject = 10
+    numberObject = 5
     counter = 0 
-    for x in os.listdir("/mnt/hdd/VINIF/DataVIN/Official/"):
+    for x in os.listdir("../DataVIN/Official/"):
         if x != "BN001" and x != "K317" and x!= "BN002" and x!= "K299" and x!= "K305":
             listPaths.append("Official/"+x)
             counter += 1
@@ -276,27 +296,35 @@ if __name__ == "__main__":
             break
     print(listPaths)
 
-    datas = extractData()
+    # datas = extractData()
 
 
-    print("Number of subjects in data: ", len(datas))
-    # data splited into a matrix of expected window size
-    PreProDatas = preprocessData(datas, 120)
+    # print("Number of subjects in data: ", len(datas))
+    # # data splited into a matrix of expected window size
+    
+    # PreProDatas = preprocessData(datas, 120)
+
+    # with open('savedData.pkl', 'wb') as f:
+    #     pickle.dump(PreProDatas, f)
+
+    with open('savedData.pkl', 'rb') as f:
+        PreProDatas = pickle.load(f)
+
+
     # analyzer general
     analyze(PreProDatas)
     for i in range(len(PreProDatas)):
         print(listPaths[i])
-        analyzeSub(PreProDatas[i], i)
+        # analyzeSub(PreProDatas[i], i)
 
     scAcc = []
     scAccTrain = []
-    for sc in range(9):
+    for sc in range(1, 9):
     # test by scenario
         X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, sc)
-
         X_train, y_train = augmentData(np.asarray(X_train), np.asarray(y_train), labels= [x for x in range(numberObject)])
-        analyzeTrainData(y_train, "original distribution training")
-        analyzeTrainData(y_test, "original distribution testing")
+        # analyzeTrainData(y_train, "original distribution training")
+        # analyzeTrainData(y_test, "original distribution testing")
         # reshape X_train, X_test
 
         n_samples, n_timestamp, n_channels = X_train.shape

@@ -4,9 +4,36 @@ import torch
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-
 from sklearn.model_selection import train_test_split
+from nets import *
+
+
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+
+h1, w1 = 3, 1
+h2, w2 = 3, 3
+h3, w3 = 3, 5
+width = 10
+height = 10
+paramsCNN2D = {'conv_channels': [
+            [1, 16, 8],
+            [1, 16, 32],
+            [1, 64, 32, 16, 8],
+            [1, 128, 64, 32, 16, 8],
+            [1, 256, 128, 64, 32, 16, 8]
+        ],
+            'kernel_size': [[(h1, w1 * width), (h1, w1 * width), (h1, w1 * width),
+                             (h1, w1 * width), (h1, w1 * width), (h1, w1 * width)],
+
+                            [(h2 * height, w2), (h2 * height, w2), (h2 * height, w2),
+                             (h2 * height, w2), (h2 * height, w2), (h2 * height, w2)],
+
+                            [(h3, w3 * width), (h3, w3 * width), (h3, w3 * width),
+                             (h3, w3 * width), (h3, w3 * width), (h3, w3 * width)]]
+        }
+
+
 
 def chunk(matrix, size):
     list_matrix = []
@@ -153,7 +180,7 @@ def getDataRandom(inputData):
 
 def getDataScenario(inputData, testIndex):
     data, label, test = [], [], []
-    for id, dataSub in enumerate(inputData[:10]):
+    for id, dataSub in enumerate(inputData):
         for dataSample, scenarioId in dataSub:
             subLabel = [id] * len(dataSample)
             data.extend(dataSample)
@@ -165,7 +192,6 @@ def getDataScenario(inputData, testIndex):
             else:
                 testLabel = [0] * len(dataSample)
                 test.extend(testLabel)
-
     X_train, y_train, X_test, y_test = trainTestSplit(data, label, test, 1)
     return np.asarray(X_train), y_train, np.asarray(X_test), y_test
 
