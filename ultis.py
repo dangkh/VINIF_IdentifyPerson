@@ -304,6 +304,18 @@ def chooseModel(modelName, num_class, input_size = None):
                         dense_size    = 128,
                         dropout       = 0.5, 
                         nclass = num_class)
+    elif modelName == "GCN":
+        keys = list(paramsCNN2D)
+        d = {
+            'kernel_size': paramsCNN2D['kernel_size'][1],
+            'conv_channels': paramsCNN2D['conv_channels'][1]
+        }
+        model = GCN(input_size    = input_size,
+                        kernel_size   = d['kernel_size'],
+                        conv_channels = d['conv_channels'],
+                        dense_size    = 128,
+                        dropout       = 0.5, 
+                        nclass = num_class)
     else:
         model = WvConvNet(num_class, 6, 2, drop_rate=0.5, flatten=True, input_size = input_size)
         print(model)
