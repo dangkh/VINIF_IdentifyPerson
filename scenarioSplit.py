@@ -140,11 +140,11 @@ def EEGByFixation(link, listFixation):
                 tmp = eeg_data_new.copy().crop(start[0], stop[0])
                 # chon 4 channels
                 # Cz, Fz, Fp1, F7, F3, FC1, C3, FC5, FT9, T7, CP5, CP1, P3, P7, PO9, O1, Pz, Oz, O2, PO10, P8, P4, CP2, CP6, T8, FT10, FC6, C4, FC2, F4, F8, Fp2
-                matrix = tmp.get_data(picks = ['C3', 'Cz', 'C4', 'CP1', 'CP2']).T
+                # matrix = tmp.get_data(picks = ['C3', 'Cz', 'C4', 'CP1', 'CP2']).T
                 
                 # uncomment neu chon toan bo channel
-                # tmp = tmp.to_data_frame()
-                # matrix = tmp.iloc[:, 1:].to_numpy()
+                tmp = tmp.to_data_frame()
+                matrix = tmp.iloc[:, 1:].to_numpy()
                 
                 
                 numFrame = matrix.shape[0]
@@ -232,7 +232,13 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = model(inputs)
+            mat = np.asarray(inputs)
+            s1, s2, s3, s4 = mat.shape
+            mat = mat.reshape(s1*s2, s3, s4)
+            coMat = mat.mean(axis = 0)
+            Adj = np.abs(np.corrcoef(coMat[:,:].T))
+            matAdj = torch.Tensor(Adj).to(device)
+            outputs = model(inputs, matAdj)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -286,7 +292,7 @@ def vis():
 
 if __name__ == "__main__":
     listPaths = []
-    numberObject = 5
+    numberObject = 10
     counter = 0 
     for x in os.listdir("../DataVIN/Official/"):
         if x != "BN001" and x != "K317" and x!= "BN002" and x!= "K299" and x!= "K305":
@@ -296,23 +302,17 @@ if __name__ == "__main__":
             break
     print(listPaths)
 
-    # datas = extractData()
-
-
-    # print("Number of subjects in data: ", len(datas))
-    # # data splited into a matrix of expected window size
-    
-    # PreProDatas = preprocessData(datas, 120)
-
-    # with open('savedData.pkl', 'wb') as f:
-    #     pickle.dump(PreProDatas, f)
-
-    with open('savedData.pkl', 'rb') as f:
-        PreProDatas = pickle.load(f)
+    if not os.path.exists("./data.npy"):
+        datas = extractData()
+        print("Number of subjects in data: ", len(datas))
+        PreProDatas = preprocessData(datas, 128)
+        np.save("./data", PreProDatas)
+    else:
+        PreProDatas = np.load("./data.npy", allow_pickle= True)
 
 
     # analyzer general
-    analyze(PreProDatas)
+    # analyze(PreProDatas)
     for i in range(len(PreProDatas)):
         print(listPaths[i])
         # analyzeSub(PreProDatas[i], i)
@@ -338,18 +338,14 @@ if __name__ == "__main__":
         num_class = len(np.unique(y_train))
         
         listModelName = []
-        model = chooseModel("CNN_LSTM", num_class, input_size = (1, X_train.shape[2], X_train.shape[3]))
+        model = chooseModel("GCN", num_class, input_size = (1, X_train.shape[2], X_train.shape[3]))
         print("Model architecture >>>", model)
         model.to(device)
         criterion = nn.CrossEntropyLoss()
-        lr = 3e-4
+        lr = 3e-3
         optimizer = optim.Adam(model.parameters(), lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
-        n_epochs = 20
+        n_epochs = 3
 
         _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class= num_class, log_batch=len(trainLoader) // 30)
-        scAcc.append(acc)
-        scAccTrain.append(accTrain)
-    print(np.asarray(scAcc).mean())
-    print(np.asarray(scAccTrain).mean())
     

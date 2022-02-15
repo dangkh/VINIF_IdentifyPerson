@@ -348,6 +348,33 @@ def chooseModel(modelName, num_class, input_size = None):
     return model
 
 
+def evaluateModel(model, plotConfusion, dataLoader, n_class):
+    counter = 0
+    total = 0
+    preds = []
+    trueLabel = []
+    model.eval()
+    for idx, data in enumerate(dataLoader):
+        xx, yy = data
+        trueLabel.extend(yy.numpy())
+        total += len(yy)
+        matAdj = calculateAdj(xx)
+        xx = xx.to(device)
+        with torch.no_grad():
+            pred = model(xx, matAdj)
+            res = torch.argmax(pred, 1)
+            if torch.cuda.is_available():
+                res = res.cpu()
+            preds.extend(res.numpy())
+            for id, ypred in enumerate(res):
+                if ypred == yy[id].item():
+                    counter += 1
+    print('acc: {:1f}%'.format(100 * counter / total))
+    if plotConfusion:
+        plotCl = [str(x) for x in range(n_class)]
+        plot_confusion_matrix(trueLabel, preds, classes= plotCl, normalize=True, title='Validation confusion matrix')
+
+
 # def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class, log_batch):
 #     llos = []
 #     best_acc = 0
@@ -394,4 +421,11 @@ def chooseModel(modelName, num_class, input_size = None):
 #         acc = evaluateModel(model, plotConfusion = False, dataLoader = validLoader, n_class=n_class)
 #     return model, llos    
 
-
+def calculateAdj(inputMat):
+    mat = np.asarray(inputMat)
+    s1, s2, s3, s4 = mat.shape
+    mat = mat.reshape(s1 * s2, s3, s4)
+    coMat = mat.mean(axis=0)
+    Adj = np.abs(np.corrcoef(coMat[:, :].T))
+    matAdj = torch.Tensor(Adj).to(device)
+    return matAdj

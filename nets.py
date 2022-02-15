@@ -153,10 +153,10 @@ class GraphConvolution(nn.Module):
         super(GraphConvolution, self).__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
-        self.weight = nn.Parameter(torch.DoubleTensor(in_dim, out_dim))
+        self.weight = nn.Parameter(torch.Tensor(in_dim, out_dim))
 
         if use_bias:
-            self.bias = nn.Parameter(torch.DoubleTensor(out_dim))
+            self.bias = nn.Parameter(torch.Tensor(out_dim))
         else:
             self.register_parameter('bias', None)
         self.reset_parameters()
@@ -167,11 +167,11 @@ class GraphConvolution(nn.Module):
         if self.bias is not None:
             self.bias.data.uniform_(-stdv, stdv)
 
-    def forward(self, input):
-        print(input.shape)
-        print(self.weight.shape)
-        support = torch.mm(input, self.weight)
-        output = torch.sparse.mm(adj, support)
+    def forward(self, input, adj):
+        s1, s2, s3, s4 = input.shape
+        newInp = input.reshape(s1, s2, s4, s3)
+        support = torch.matmul(newInp, self.weight)
+        output = torch.matmul(adj, support)
 
         if self.bias is not None:
             return output + self.bias
@@ -183,42 +183,63 @@ class GraphConvolution(nn.Module):
         return '{}(in_dim={}, out_dim={})'.format(self.__class__.__name__, self.in_dim, self.out_dim)
 
 
-# class GCN(torch.nn.Module):
-#     def __init__(self, input_size, kernel_size, conv_channels,
-#                  dense_size, dropout, nclass = 3):
-#         super(GCN, self).__init__()
+class GCN(torch.nn.Module):
+    def __init__(self, input_size, kernel_size, conv_channels,
+                 dense_size, dropout, nclass = 3):
+        super(GCN, self).__init__()
         
-#         self.gcn1 = GraphConvolution(128, 64)
+        self.gcn1 = GraphConvolution(128, 64)
 
-#         output_LSTM = self.get_output_LSTMdim(input_size, self.gcn1)
-#         numFeatures = output_LSTM[-1]
-#         self.lstm = nn.LSTM(numFeatures, 8, bidirectional=True, batch_first=True)
-#         self.flat_dim = self.get_output_dim(input_size, self.gcn1)
-#         self.fc1 = torch.nn.Linear(self.flat_dim, dense_size)
-#         self.fc2 = torch.nn.Linear(dense_size, nclass)
+        # output_LSTM = self.get_output_LSTMdim(input_size, self.gcn1)
+        # numFeatures = 1
+        # # numFeatures = output_LSTM[-1]
+        # self.lstm = nn.LSTM(numFeatures, 8, bidirectional=True, batch_first=True)
+        self.flat_dim = self.get_output_dim(input_size, self.gcn1)
+        self.Dropout = nn.Dropout(dropout)
+        self.fc1 = torch.nn.Linear(self.flat_dim, dense_size)
+        self.fc2 = torch.nn.Linear(dense_size, nclass)
 
 
-#     def get_output_dim(self, input_size, gcn):
-#         with torch.no_grad():
-#             input = torch.ones(1, *input_size)
-#         input = self.gcn1(input, adj)
-#         flatout = int(np.prod(input.size()[1:]))
-#         print("Input shape : {} and flattened : {}".format(input.shape, flatout))
-#         shape = input.shape
-#         output = input.view(len(input), shape[1] * shape[2] ,-1)
-#         print("LSTM input: ", output.shape)
-#         h_lstm, _ = self.lstm(output)
-#         print("output LSTM: ", output.shape)
-#         output = torch.flatten(h_lstm,1)
-#         return output.shape[-1]
+    def get_output_dim(self, input_size, gcn):
+        with torch.no_grad():
+            input = torch.ones(1, *input_size)
+        tmpAdj = torch.Tensor(32, 32)
+        input = self.gcn1(input, tmpAdj)
+        flatout = int(np.prod(input.size()[1:]))
+        print("Input shape : {} and flattened : {}".format(input.shape, flatout))
+        shape = input.shape
+        output = input.view(len(input), shape[1] * shape[2] ,-1)
+        # print("LSTM input: ", output.shape)
+        # h_lstm, _ = self.lstm(output)
+        # print("output LSTM: ", output.shape)
+        output = torch.flatten(output,1)
+        return output.shape[-1]
 
-#     def forward(self, x, adj):
-#         x = self.gcn1(x, adj)
-#         shape = x.shape
-#         output = x.view(len(x), shape[1] * shape[2] ,-1)
-#         h_lstm, _ = self.lstm(output)
-#         output = torch.flatten(h_lstm,1)
-#         output = F.relu(self.fc1(output))
-#         output = self.Dropout(output)
-#         output = self.fc2(output)
-#         return output
+    # def get_output_LSTMdim(self, input_size, gcn):
+    #     with torch.no_grad():
+    #         input = torch.ones(1, *input_size)
+    #     tmpAdj = torch.Tensor(32, 32)
+    #     input = self.gcn1(input, tmpAdj)
+    #     print(input.shape)
+    #     flatout = int(np.prod(input.size()[1:]))
+    #     print("Input shape : {} and flattened : {}".format(input.shape, flatout))
+    #     shape = input.shape
+    #     output = input.view(len(input), shape[1] * shape[2] ,-1)
+    #     print("LSTM input: ", output.shape)
+    #     h_lstm, _ = self.lstm(output)
+    #     print("output LSTM: ", output.shape)
+    #     output = torch.flatten(h_lstm,1)
+    #     print(output.shape)
+    #     stop
+    #     return output.shape[-1]
+
+    def forward(self, x, adj):
+        x = self.gcn1(x, adj)
+        shape = x.shape
+        output = x.view(len(x),-1)
+        # h_lstm, _ = self.lstm(output)
+        # output = torch.flatten(h_lstm,1)
+        output = F.relu(self.fc1(output))
+        output = self.Dropout(output)
+        output = self.fc2(output)
+        return output
