@@ -348,20 +348,22 @@ def chooseModel(modelName, num_class, input_size = None):
     return model
 
 
-def evaluateModel(model, plotConfusion, dataLoader, n_class):
+def evaluateModel(model, plotConfusion, dataLoader, n_class, adj):
     counter = 0
     total = 0
     preds = []
     trueLabel = []
     model.eval()
+    print(dataLoader.dataset.X.shape)
+    matAdj = calculateAdj(dataLoader.dataset.X)
     for idx, data in enumerate(dataLoader):
         xx, yy = data
         trueLabel.extend(yy.numpy())
         total += len(yy)
-        matAdj = calculateAdj(xx)
         xx = xx.to(device)
         with torch.no_grad():
             pred = model(xx, matAdj)
+            # pred = model(xx)
             res = torch.argmax(pred, 1)
             if torch.cuda.is_available():
                 res = res.cpu()

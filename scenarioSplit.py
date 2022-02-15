@@ -212,7 +212,7 @@ def get_data(dataName, expType = 1, expIndex = 1):
     return data
 
 
-def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class, log_batch):
+def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class, log_batch, adj):
     llos = []
     best_acc = 0
     for epoch in range(n_epochs):  # loop over the dataset multiple times
@@ -232,13 +232,14 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            mat = np.asarray(inputs)
-            s1, s2, s3, s4 = mat.shape
-            mat = mat.reshape(s1*s2, s3, s4)
-            coMat = mat.mean(axis = 0)
-            Adj = np.abs(np.corrcoef(coMat[:,:].T))
-            matAdj = torch.Tensor(Adj).to(device)
-            outputs = model(inputs, matAdj)
+            # mat = np.asarray(inputs)
+            # s1, s2, s3, s4 = mat.shape
+            # mat = mat.reshape(s1*s2, s3, s4)
+            # coMat = mat.mean(axis = 0)
+            # Adj = np.abs(np.corrcoef(coMat[:,:].T))
+            # matAdj = torch.Tensor(Adj).to(device)
+            outputs = model(inputs, adj)
+            # outputs = model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -261,8 +262,8 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
         scheduler.step()
         sys.stdout.write("\r[{0}] {1}% loss: {2: 3f}".format('#'*50, 100, mean_loss))
         sys.stdout.flush()
-        acc = evaluateModel(model, plotConfusion = False, dataLoader = validLoader, n_class=n_class)
-        accTrain = evaluateModel(model, plotConfusion = False, dataLoader = trainLoader, n_class=n_class)
+        acc = evaluateModel(model, plotConfusion = False, dataLoader = validLoader, n_class=n_class, adj = adj)
+        accTrain = evaluateModel(model, plotConfusion = False, dataLoader = trainLoader, n_class=n_class, adj = adj)
     return model, llos, acc, accTrain
 
 def vis():
@@ -322,6 +323,9 @@ if __name__ == "__main__":
     for sc in range(1, 9):
     # test by scenario
         X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, sc)
+        s1, s2, s3 = X_train.shape
+        matAdj = calculateAdj(np.expand_dims(X_train, 0))
+        testAdj = calculateAdj(np.expand_dims(X_test, 0))
         X_train, y_train = augmentData(np.asarray(X_train), np.asarray(y_train), labels= [x for x in range(numberObject)])
         # analyzeTrainData(y_train, "original distribution training")
         # analyzeTrainData(y_test, "original distribution testing")
@@ -342,10 +346,10 @@ if __name__ == "__main__":
         print("Model architecture >>>", model)
         model.to(device)
         criterion = nn.CrossEntropyLoss()
-        lr = 3e-3
+        lr = 3e-4
         optimizer = optim.Adam(model.parameters(), lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
-        n_epochs = 3
+        n_epochs = 20
 
-        _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class= num_class, log_batch=len(trainLoader) // 30)
+        _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class= num_class, log_batch=len(trainLoader) // 30, adj = matAdj)
     
