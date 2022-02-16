@@ -354,7 +354,6 @@ def evaluateModel(model, plotConfusion, dataLoader, n_class, adj):
     preds = []
     trueLabel = []
     model.eval()
-    print(dataLoader.dataset.X.shape)
     matAdj = calculateAdj(dataLoader.dataset.X)
     for idx, data in enumerate(dataLoader):
         xx, yy = data
@@ -362,7 +361,7 @@ def evaluateModel(model, plotConfusion, dataLoader, n_class, adj):
         total += len(yy)
         xx = xx.to(device)
         with torch.no_grad():
-            pred = model(xx, matAdj)
+            pred = model(xx, adj)
             # pred = model(xx)
             res = torch.argmax(pred, 1)
             if torch.cuda.is_available():
@@ -428,6 +427,10 @@ def calculateAdj(inputMat):
     s1, s2, s3, s4 = mat.shape
     mat = mat.reshape(s1 * s2, s3, s4)
     coMat = mat.mean(axis=0)
-    Adj = np.abs(np.corrcoef(coMat[:, :].T))
-    matAdj = torch.Tensor(Adj).to(device)
+    Adj = np.corrcoef(coMat[:, :].T)
+    # print(Adj)
+    D = np.array(np.sum(Adj, axis=0))
+    # print(D)
+    D = np.matrix(np.diag(D))
+    matAdj = torch.Tensor(D**-1 * Adj).to(device)
     return matAdj

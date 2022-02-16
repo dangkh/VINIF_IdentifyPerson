@@ -346,10 +346,10 @@ if __name__ == "__main__":
         print("Model architecture >>>", model)
         model.to(device)
         criterion = nn.CrossEntropyLoss()
-        lr = 3e-4
+        lr = 1e-4
         optimizer = optim.Adam(model.parameters(), lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
-        n_epochs = 20
+        n_epochs = 15
 
         _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class= num_class, log_batch=len(trainLoader) // 30, adj = matAdj)
     
