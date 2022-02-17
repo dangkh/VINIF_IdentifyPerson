@@ -354,7 +354,6 @@ def evaluateModel(model, plotConfusion, dataLoader, n_class, adj):
     preds = []
     trueLabel = []
     model.eval()
-    matAdj = calculateAdj(dataLoader.dataset.X)
     for idx, data in enumerate(dataLoader):
         xx, yy = data
         trueLabel.extend(yy.numpy())
@@ -430,7 +429,37 @@ def calculateAdj(inputMat):
     Adj = np.corrcoef(coMat[:, :].T)
     # print(Adj)
     D = np.array(np.sum(Adj, axis=0))
-    # print(D)
-    D = np.matrix(np.diag(D))
-    matAdj = torch.Tensor(D**-1 * Adj).to(device)
+    D = np.sqrt(D)
+    # print(np.matrix(np.diag(D)).shape)
+    # print(np.diag(D).shape)
+    # print(np.diag(D))
+    # print(np.matrix(np.diag(D)))
+
+    # print(np.diag(D).shape)
+    # print(np.matrix(np.diag(D)).shape)
+
+    D = np.diag(D)
+    matAdj = torch.Tensor(np.linalg.inv(D) * Adj * np.linalg.inv(D)).to(device)
+    # matAdj = get_adj(Adj)
     return matAdj
+
+def get_adj(adj):
+    """
+    build symmetric adjacency matrix
+    @param adj:
+    @return:
+    """
+    adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)
+    adj = normalize(adj + sp.eye(adj.shape[0]))
+    adj = sparse_mx_to_torch_sparse_tensor(adj)
+    return adj
+
+
+def normalize(mx):
+    """Row-normalize sparse matrix"""
+    rowsum = np.array(mx.sum(1))
+    r_inv = np.power(rowsum, -1).flatten()
+    r_inv[np.isinf(r_inv)] = 0.
+    r_mat_inv = sp.diags(r_inv)
+    mx = r_mat_inv.dot(mx)
+    return mx

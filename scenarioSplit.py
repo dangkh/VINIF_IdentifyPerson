@@ -212,7 +212,7 @@ def get_data(dataName, expType = 1, expIndex = 1):
     return data
 
 
-def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class, log_batch, adj):
+def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class, log_batch, adj, testAdj):
     llos = []
     best_acc = 0
     for epoch in range(n_epochs):  # loop over the dataset multiple times
@@ -262,7 +262,7 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
         scheduler.step()
         sys.stdout.write("\r[{0}] {1}% loss: {2: 3f}".format('#'*50, 100, mean_loss))
         sys.stdout.flush()
-        acc = evaluateModel(model, plotConfusion = False, dataLoader = validLoader, n_class=n_class, adj = adj)
+        acc = evaluateModel(model, plotConfusion = False, dataLoader = validLoader, n_class=n_class, adj = testAdj)
         accTrain = evaluateModel(model, plotConfusion = False, dataLoader = trainLoader, n_class=n_class, adj = adj)
     return model, llos, acc, accTrain
 
@@ -351,5 +351,5 @@ if __name__ == "__main__":
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
         n_epochs = 15
 
-        _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class= num_class, log_batch=len(trainLoader) // 30, adj = matAdj)
+        _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class= num_class, log_batch=len(trainLoader) // 30, adj = matAdj, testAdj = testAdj)
     
