@@ -153,7 +153,7 @@ class GraphConvolution(nn.Module):
         super(GraphConvolution, self).__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
-        self.weight = nn.Parameter(torch.Tensor(8, in_dim, out_dim))
+        self.weight = nn.Parameter(torch.Tensor(16, in_dim, out_dim))
         
 
         if use_bias:

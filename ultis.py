@@ -6,6 +6,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from nets import *
+import json
+import mne
+import pandas as pd
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -67,6 +70,28 @@ def preprocessData(inputData, size):
         preprocSub = []
         for sampleId in range(numberSample):
             scenarioId, listEEG, listFixation = subData[sampleId]
+            # print(scenarioId)
+            newData, label = chunk_matrix(listEEG, scenarioId, size = size)
+            preprocSub.append([newData, label])
+            # break
+        result.append(preprocSub)
+    """
+    result comprises [[dataSub1],[dataSub2]...]
+    dataSubx comprises [[data, scenarioID], [data, scenarioID]]
+    """
+    return result
+
+
+def preprocessDataMI(inputData, size):
+    result = []
+    
+    numberSub = len(inputData)
+    for subId in range(numberSub):
+        numberSample = len(inputData[subId])
+        subData = inputData[subId]
+        preprocSub = []
+        for sampleId in range(numberSample):
+            scenarioId, listEEG = subData[sampleId]
             # print(scenarioId)
             newData, label = chunk_matrix(listEEG, scenarioId, size = size)
             preprocSub.append([newData, label])
@@ -196,6 +221,32 @@ def getDataScenario(inputData, testIndex):
     return np.asarray(X_train), y_train, np.asarray(X_test), y_test
 
 
+# get MI data all of it
+def getDataMI_All(inputData):
+    data, label = [], []
+    for id, dataSub in enumerate(inputData):
+        for dataSample, scenario in dataSub:
+            # tmp = 0
+            # if id > 10: 
+            #     tmp = 1
+            data.extend(dataSample)
+            label.extend([id]*len(dataSample))
+    return np.asarray(data), np.asarray(label)
+
+
+def getDataMI_All_byPerson(inputData, personID = 0, personList = 0):
+    data, label = [], []
+    # for id, dataSub in enumerate(inputData[personID]):
+    id = personID
+    dataSub = inputData[personID]
+    for dataSample, scenario in dataSub:
+        # tmp = 0
+        # if id > 10: 
+        #     tmp = 1
+        data.extend(dataSample)
+        label.extend([id]*len(dataSample))
+    return np.asarray(data), np.asarray(label)
+
 def addNoise(data, target):
     list_newdata = []
     list_newtarget = []
@@ -286,6 +337,7 @@ def randomSwapSample(data, target):
         list_newtarget.append(target[idx])
     return list_newdata, list_newtarget
 
+
 def augmentData(Xs, Ys, labels):
     newXs = []
     newYs = []
@@ -293,31 +345,32 @@ def augmentData(Xs, Ys, labels):
         X_source = Xs[np.where(Ys == label)]
         y_source = Ys[np.where(Ys == label)]
         datanoise, targetnoise = addNoise(X_source, y_source)
-        dataRemove, targetRemove = randomRemoveSample(X_source, y_source)
-        dataSwap, targetSwap = randomSwapSample(X_source, y_source)
+        # dataRemove, targetRemove = randomRemoveSample(X_source, y_source)
+        # dataSwap, targetSwap = randomSwapSample(X_source, y_source)
         newXs.extend(datanoise)
-        newXs.extend(dataRemove)
-        newXs.extend(dataSwap)
+        # newXs.extend(dataRemove)
+        # newXs.extend(dataSwap)
         newYs.extend(targetnoise)
-        newYs.extend(targetRemove)
-        newYs.extend(targetSwap)
+        # newYs.extend(targetRemove)
+        # newYs.extend(targetSwap)
     newXs.extend(Xs)
     newYs.extend(Ys)
     return np.asarray(newXs), np.asarray(newYs)
 
-def chooseModel(modelName, num_class, input_size = None):
+
+def chooseModel(modelName, num_class, input_size=None):
     if modelName == "CNN2D":
         keys = list(paramsCNN2D)
         d = {
             'kernel_size': paramsCNN2D['kernel_size'][1],
             'conv_channels': paramsCNN2D['conv_channels'][1]
         }
-        model = CNN2D(input_size    = input_size,
-                        kernel_size   = d['kernel_size'],
-                        conv_channels = d['conv_channels'],
-                        dense_size    = 128,
-                        dropout       = 0.5, 
-                        nclass = num_class)
+        model = CNN2D(  input_size        = input_size,
+                        kernel_size     = d['kernel_size'],
+                        conv_channels   = d['conv_channels'],
+                        dense_size      = 128,
+                        dropout         = 0.5, 
+                        nclass          = num_class)
     elif modelName == "CNN_LSTM":
         keys = list(paramsCNN2D)
         d = {
@@ -360,8 +413,8 @@ def evaluateModel(model, plotConfusion, dataLoader, n_class, adj):
         total += len(yy)
         xx = xx.to(device)
         with torch.no_grad():
-            pred = model(xx, adj)
-            # pred = model(xx)
+            # pred = model(xx, adj)
+            pred = model(xx)
             res = torch.argmax(pred, 1)
             if torch.cuda.is_available():
                 res = res.cpu()
@@ -372,7 +425,8 @@ def evaluateModel(model, plotConfusion, dataLoader, n_class, adj):
     print('acc: {:1f}%'.format(100 * counter / total))
     if plotConfusion:
         plotCl = [str(x) for x in range(n_class)]
-        plot_confusion_matrix(trueLabel, preds, classes= plotCl, normalize=True, title='Validation confusion matrix')
+        plot_confusion_matrix(trueLabel, preds, classes=plotCl, normalize=True, title='Validation confusion matrix')
+    return 100 * counter / total
 
 
 # def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class, log_batch):
@@ -463,3 +517,102 @@ def normalize(mx):
     r_mat_inv = sp.diags(r_inv)
     mx = r_mat_inv.dot(mx)
     return mx
+
+def getNormR(data):
+    print(data.shape)
+    normR = np.zeros([128, 128])
+    for ii in range(len(data)):
+        covX = np.matmul(data[ii], data[ii].T)
+        normR += covX
+    normR = normR / len(data)
+    return normR
+
+
+def extractData_byInfo(info):
+    datas = []
+    listPaths = info['listPaths']
+    list_dir = []
+    for sub in listPaths:
+        list_dir.append(sub)
+
+    # print(list_dir)
+    for dir in list_dir:
+        data = extractSub_byInfo(dir, info)
+        datas.append(data)
+
+    return datas
+
+def extractSub_byInfo(path, info):
+    samples = os.listdir(path)
+    print(samples)
+    data = []
+    for idx, sample in enumerate(samples):
+        samplePath = path + '/' + sample + '/'
+        jsonpath = samplePath + "scenario.json"
+        if os.path.isdir(samplePath):
+            print(samplePath)
+            # stop
+            scenarioNum = -1
+            with open(jsonpath) as json_file:
+                datajs = json.load(json_file)
+                scenarioNum = getScenNumber(datajs)
+            listEEG, _ = EEGExtractor_byInfo(samplePath, info)
+            data.append([scenarioNum - 1, listEEG, _])
+    return data
+
+
+def getScenNumber(jsfile):
+    # return scenario Number rgds to input jsfile
+    res = -1
+    listkey = ["scenarioId", "RecPlanEdit", "scenarioNumber"]
+    for key in listkey:
+        try:
+            res = jsfile[key]
+        except Exception as e:
+            print('error key' + key)
+    return res
+
+def checkSubFolder(path):
+    # return list folder contain data according to input path
+    list_dir = []
+    subs = os.listdir(path)
+    for sub in subs:
+        subPath = path + '/' + sub
+        infoPath = path + '/' + sub + '/info.json'
+        if os.path.isfile(infoPath) and os.path.isdir(subPath):
+            list_dir.append(subPath)
+    return list_dir
+
+
+def EEGExtractor_byInfo(link, info):
+    eeg_raw = mne.io.read_raw_edf(link + "/EEG.edf")
+    print(eeg_raw.info)
+    eeg_data_new = eeg_raw.copy().load_data().filter(l_freq= float(info['bandL']), h_freq= float(info['bandR']))
+    eegTs = pd.read_csv(link + '/EEGTimeStamp.txt', names=['TimeStamp'])
+    eegTs = eegTs.sort_values(by=['TimeStamp'])
+    print("Time in EEGTS by Frame number: ", len(eegTs) / int(info['windowSize']), "*" * 20)
+    print("Time in EEGTS by TS: ", eegTs["TimeStamp"].iloc[-1] - eegTs["TimeStamp"].iloc[0], "*" * 20)
+    timeInTs = len(eegTs) / int(info['windowSize'])
+    timeInFrame = eegTs["TimeStamp"].iloc[-1] - eegTs["TimeStamp"].iloc[0]
+    if abs(timeInTs - timeInFrame) > 2:
+        return [], []
+    print(eeg_data_new.annotations)
+    stop
+    listEEG = []
+    for annos in eeg_data_new.annotations:
+        if annos["description"] != 'Thinking':
+            continue
+        print(annos)
+        start = annos["onset"] + 0.1
+        y = annos["duration"]
+        stop = start + y - 0.1
+        tmp = eeg_data_new.copy().crop(start, stop)
+        # chon 4 channels
+        # Cz, Fz, Fp1, F7, F3, FC1, C3, FC5, FT9, T7, CP5, CP1, P3, P7, PO9, O1, Pz, Oz, O2, PO10, P8, P4, CP2, CP6, T8, FT10, FC6, C4, FC2, F4, F8, Fp2
+        # matrix = tmp.get_data(picks = ['C3', 'Cz', 'C4', 'CP1', 'CP2']).T
+
+        # uncomment neu chon toan bo channel
+        tmp = tmp.to_data_frame()
+        matrix = tmp.iloc[:, 1:].to_numpy()
+        listEEG.append(matrix)
+    return listEEG, ""

@@ -20,21 +20,21 @@ import pickle
 
 
 paramsCNN2D = {'conv_channels': [
-            [1, 16, 8],
-            [1, 16, 32],
-            [1, 64, 32, 16, 8],
-            [1, 128, 64, 32, 16, 8],
-            [1, 256, 128, 64, 32, 16, 8]
-        ],
-            'kernel_size': [[(h1, w1 * width), (h1, w1 * width), (h1, w1 * width),
-                             (h1, w1 * width), (h1, w1 * width), (h1, w1 * width)],
+    [1, 16, 8],
+    [1, 16, 32],
+    [1, 64, 32, 16, 8],
+    [1, 128, 64, 32, 16, 8],
+    [1, 256, 128, 64, 32, 16, 8]
+],
+    'kernel_size': [[(h1, w1 * width), (h1, w1 * width), (h1, w1 * width),
+                     (h1, w1 * width), (h1, w1 * width), (h1, w1 * width)],
 
-                            [(h2 * height, w2), (h2 * height, w2), (h2 * height, w2),
-                             (h2 * height, w2), (h2 * height, w2), (h2 * height, w2)],
+                    [(h2 * height, w2), (h2 * height, w2), (h2 * height, w2),
+                     (h2 * height, w2), (h2 * height, w2), (h2 * height, w2)],
 
-                            [(h3, w3 * width), (h3, w3 * width), (h3, w3 * width),
-                             (h3, w3 * width), (h3, w3 * width), (h3, w3 * width)]]
-        }
+                    [(h3, w3 * width), (h3, w3 * width), (h3, w3 * width),
+                     (h3, w3 * width), (h3, w3 * width), (h3, w3 * width)]]
+}
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -44,11 +44,12 @@ def checkSubFolder(path):
     list_dir = []
     subs = os.listdir(path)
     for sub in subs:
-        subPath = path + '/'+ sub
+        subPath = path + '/' + sub
         infoPath = path + '/' + sub + '/info.json'
         if os.path.isfile(infoPath) and os.path.isdir(subPath):
             list_dir.append(subPath)
     return list_dir
+
 
 def subInVIN():
     # return list folder contain data in VIN project
@@ -56,14 +57,15 @@ def subInVIN():
     # list_dir.extend(checkSubFolder("/mnt/hdd/VINIF/DataVIN"))
     # list_dir.extend(checkSubFolder("/mnt/hdd/VINIF/DataVIN/Official"))
     prePath = "../DataVIN/"
-    # listPaths = ['HMI09', 'HMI10', 'HMI11', 'HMI13', 'HMI15', 'Official/BN001', 
+    # listPaths = ['HMI09', 'HMI10', 'HMI11', 'HMI13', 'HMI15', 'Official/BN001',
     #  'Official/BN002', 'Official/K299', 'Official/K300', 'Official/BN003']
-    # listPaths = ['HMI10', 'HMI11', 'HMI13', 'HMI15', 'BV103_01', 'Official/BN001', 
+    # listPaths = ['HMI10', 'HMI11', 'HMI13', 'HMI15', 'BV103_01', 'Official/BN001',
     #  'Official/BN002', 'Official/K299', 'Official/K300', 'Official/BN003']
-    
+
     for sub in listPaths:
         list_dir.append(prePath + sub)
     return list_dir
+
 
 def getScenNumber(jsfile):
     # return scenario Number rgds to input jsfile
@@ -81,39 +83,41 @@ def ET2Fixation(etFile):
     print(etFile.head())
     # charactertyping
     n = len(etFile['sentence'])
-    print("Time in ET: ", n / 60, "*"*10)
+    print("Time in ET: ", n / 60, "*" * 10)
     startTyping = 0
     stopTyping = n
-    for i in range(n-1):
+    for i in range(n - 1):
         if etFile['sentence'][i] != "MainMenu":
             startTyping = i
             break
-    for i in range(n-1,0,-1):
+    for i in range(n - 1, 0, -1):
         if etFile['sentence'][i] != "MainMenu":
             stopTyping = i
             break
-    
+
     # print(startTyping, " ", stopTyping)
-    lastcharacter = startTyping+1
+    lastcharacter = startTyping + 1
     listFix = []
-    for i in range(startTyping+2, stopTyping-1):
+    for i in range(startTyping + 2, stopTyping - 1):
         if str(etFile['character typing'][lastcharacter]) != str(etFile['character typing'][i]):
-            tmp = abs(etFile['TimeStamp'][lastcharacter] - etFile['TimeStamp'][i-1])
-            if  tmp >= 1.4 and tmp <= 2.0:
-                listFix.append([etFile['TimeStamp'][lastcharacter], etFile['TimeStamp'][i-1]])
-                print(etFile['character typing'][lastcharacter], etFile['character typing'][i], (etFile['TimeStamp'][lastcharacter] - etFile['TimeStamp'][i-1]))
+            tmp = abs(etFile['TimeStamp'][lastcharacter] - etFile['TimeStamp'][i - 1])
+            if tmp >= 1.4 and tmp <= 2.0:
+                listFix.append([etFile['TimeStamp'][lastcharacter], etFile['TimeStamp'][i - 1]])
+                print(etFile['character typing'][lastcharacter], etFile['character typing']
+                      [i], (etFile['TimeStamp'][lastcharacter] - etFile['TimeStamp'][i - 1]))
             lastcharacter = i
     # print(listFix)
     return listFix
+
 
 def EEGByFixation(link, listFixation):
     eeg_raw = mne.io.read_raw_edf(link + "/EEG.edf")
     print(eeg_raw.info)
     eeg_data_new = eeg_raw.copy().load_data().filter(l_freq=4., h_freq=8.)
-    eegTs = pd.read_csv(link + '/EEGTimeStamp.txt', names = ['TimeStamp'])
+    eegTs = pd.read_csv(link + '/EEGTimeStamp.txt', names=['TimeStamp'])
     eegTs = eegTs.sort_values(by=['TimeStamp'])
-    print("Time in EEGTS by Frame number: ",len(eegTs) / 128, "*"*20)
-    print("Time in EEGTS by TS: ",eegTs["TimeStamp"].iloc[-1] - eegTs["TimeStamp"].iloc[0], "*"*20)
+    print("Time in EEGTS by Frame number: ", len(eegTs) / 128, "*" * 20)
+    print("Time in EEGTS by TS: ", eegTs["TimeStamp"].iloc[-1] - eegTs["TimeStamp"].iloc[0], "*" * 20)
     timeInTs = len(eegTs) / 128
     timeInFrame = eegTs["TimeStamp"].iloc[-1] - eegTs["TimeStamp"].iloc[0]
     if abs(timeInTs - timeInFrame) > 2:
@@ -123,7 +127,7 @@ def EEGByFixation(link, listFixation):
     listDiff = []
     for idx, rangeFix in enumerate(listFixation):
         startFix, stopFix = listFixation[idx]
-        print("Fix info: ",startFix, " ", stopFix, " " ,stopFix - startFix)
+        print("Fix info: ", startFix, " ", stopFix, " ", stopFix - startFix)
         if stopFix - startFix <= 0.1:
             continue
 
@@ -141,12 +145,11 @@ def EEGByFixation(link, listFixation):
                 # chon 4 channels
                 # Cz, Fz, Fp1, F7, F3, FC1, C3, FC5, FT9, T7, CP5, CP1, P3, P7, PO9, O1, Pz, Oz, O2, PO10, P8, P4, CP2, CP6, T8, FT10, FC6, C4, FC2, F4, F8, Fp2
                 # matrix = tmp.get_data(picks = ['C3', 'Cz', 'C4', 'CP1', 'CP2']).T
-                
+
                 # uncomment neu chon toan bo channel
                 tmp = tmp.to_data_frame()
                 matrix = tmp.iloc[:, 1:].to_numpy()
-                
-                
+
                 numFrame = matrix.shape[0]
                 numFrame2time = numFrame / 128
                 diffEEGvET = (stopFix - startFix) - numFrame2time
@@ -183,7 +186,7 @@ def extractSub(path):
     return data
 
 
-def extractData(testType = 0, windowSize = 120):
+def extractData(testType=0, windowSize=120):
     datas = []
     list_dir = subInVIN()
     print(list_dir)
@@ -193,7 +196,8 @@ def extractData(testType = 0, windowSize = 120):
 
     return datas
 
-def get_data(dataName, expType = 1, expIndex = 1):
+
+def get_data(dataName, expType=1, expIndex=1):
     # get data rgd to dataName
     # type = [1, 2, 3] rgd with ["none", "scenario", "phase"]
     dataList = ["VIN", "PLOS", "Phy"]
@@ -249,22 +253,24 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
             total_loss += loss.item()
             if (i + 1) % log_batch == 0:    # print every 200 mini-batches
                 # print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / log_batch))
-                percent = int(i *50/ len(trainLoader))
+                percent = int(i * 50 / len(trainLoader))
                 remain = 50 - percent
-                sys.stdout.write("\r[{0}] {1}% loss: {2: 3f}".format('#'*percent + '-'*remain, percent * 2, np.mean(running_loss)))
+                sys.stdout.write("\r[{0}] {1}% loss: {2: 3f}".format(
+                    '#' * percent + '-' * remain, percent * 2, np.mean(running_loss)))
                 sys.stdout.flush()
 
-                #if (i + 1) / log_batch >= 10:
+                # if (i + 1) / log_batch >= 10:
                 #    break
 
         mean_loss = total_loss / len(trainLoader)
         llos.append(mean_loss)
         scheduler.step()
-        sys.stdout.write("\r[{0}] {1}% loss: {2: 3f}".format('#'*50, 100, mean_loss))
+        sys.stdout.write("\r[{0}] {1}% loss: {2: 3f}".format('#' * 50, 100, mean_loss))
         sys.stdout.flush()
-        acc = evaluateModel(model, plotConfusion = False, dataLoader = validLoader, n_class=n_class, adj = testAdj)
-        accTrain = evaluateModel(model, plotConfusion = False, dataLoader = trainLoader, n_class=n_class, adj = adj)
+        acc = evaluateModel(model, plotConfusion=False, dataLoader=validLoader, n_class=n_class, adj=testAdj)
+        accTrain = evaluateModel(model, plotConfusion=False, dataLoader=trainLoader, n_class=n_class, adj=adj)
     return model, llos, acc, accTrain
+
 
 def vis():
     embeddings = []
@@ -283,8 +289,8 @@ def vis():
     import seaborn as sns
     palette = sns.color_palette("bright", 7)
     sns.scatterplot(
-        x=transformed[:,0],
-        y=transformed[:,1],
+        x=transformed[:, 0],
+        y=transformed[:, 1],
         hue=validLoader.dataset.y,
         legend='full',
         palette=palette
@@ -294,10 +300,10 @@ def vis():
 if __name__ == "__main__":
     listPaths = []
     numberObject = 10
-    counter = 0 
+    counter = 0
     for x in os.listdir("../DataVIN/Official/"):
-        if x != "BN001" and x != "K317" and x!= "BN002" and x!= "K299" and x!= "K305":
-            listPaths.append("Official/"+x)
+        if x != "BN001" and x != "K317" and x != "BN002" and x != "K299" and x != "K305":
+            listPaths.append("Official/" + x)
             counter += 1
         if counter > numberObject:
             break
@@ -309,8 +315,7 @@ if __name__ == "__main__":
         PreProDatas = preprocessData(datas, 128)
         np.save("./data", PreProDatas)
     else:
-        PreProDatas = np.load("./data.npy", allow_pickle= True)
-
+        PreProDatas = np.load("./data.npy", allow_pickle=True)
 
     # analyzer general
     # analyze(PreProDatas)
@@ -321,12 +326,13 @@ if __name__ == "__main__":
     scAcc = []
     scAccTrain = []
     for sc in range(1, 9):
-    # test by scenario
+        # test by scenario
         X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, sc)
         s1, s2, s3 = X_train.shape
         matAdj = calculateAdj(np.expand_dims(X_train, 0))
         testAdj = calculateAdj(np.expand_dims(X_test, 0))
-        X_train, y_train = augmentData(np.asarray(X_train), np.asarray(y_train), labels= [x for x in range(numberObject)])
+        X_train, y_train = augmentData(np.asarray(X_train), np.asarray(y_train),
+                                       labels=[x for x in range(numberObject)])
         # analyzeTrainData(y_train, "original distribution training")
         # analyzeTrainData(y_test, "original distribution testing")
         # reshape X_train, X_test
@@ -340,9 +346,9 @@ if __name__ == "__main__":
         X_test = np.transpose(X_test, (0, 3, 1, 2))
         trainLoader, validLoader = TrainTestLoader([X_train, y_train, X_test, y_test])
         num_class = len(np.unique(y_train))
-        
+
         listModelName = []
-        model = chooseModel("GCN", num_class, input_size = (1, X_train.shape[2], X_train.shape[3]))
+        model = chooseModel("GCN", num_class, input_size=(1, X_train.shape[2], X_train.shape[3]))
         print("Model architecture >>>", model)
         model.to(device)
         criterion = nn.CrossEntropyLoss()
@@ -351,5 +357,10 @@ if __name__ == "__main__":
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
         n_epochs = 15
 
-        _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class= num_class, log_batch=len(trainLoader) // 30, adj = matAdj, testAdj = testAdj)
-    
+        _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader,
+                                            validLoader, n_class=num_class, log_batch=len(trainLoader) // 30,
+                                            adj=matAdj, testAdj=testAdj)
+        scAcc.append(acc)
+        scAccTrain.append(accTrain)
+    print(np.asarray(scAcc).mean())
+    print(np.asarray(scAccTrain).mean())
