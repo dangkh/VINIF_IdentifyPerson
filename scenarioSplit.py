@@ -79,36 +79,6 @@ def getScenNumber(jsfile):
     return res
 
 
-def ET2Fixation(etFile):
-    print(etFile.head())
-    # charactertyping
-    n = len(etFile['sentence'])
-    print("Time in ET: ", n / 60, "*" * 10)
-    startTyping = 0
-    stopTyping = n
-    for i in range(n - 1):
-        if etFile['sentence'][i] != "MainMenu":
-            startTyping = i
-            break
-    for i in range(n - 1, 0, -1):
-        if etFile['sentence'][i] != "MainMenu":
-            stopTyping = i
-            break
-
-    # print(startTyping, " ", stopTyping)
-    lastcharacter = startTyping + 1
-    listFix = []
-    for i in range(startTyping + 2, stopTyping - 1):
-        if str(etFile['character typing'][lastcharacter]) != str(etFile['character typing'][i]):
-            tmp = abs(etFile['TimeStamp'][lastcharacter] - etFile['TimeStamp'][i - 1])
-            if tmp >= 1.4 and tmp <= 2.0:
-                listFix.append([etFile['TimeStamp'][lastcharacter], etFile['TimeStamp'][i - 1]])
-                print(etFile['character typing'][lastcharacter], etFile['character typing']
-                      [i], (etFile['TimeStamp'][lastcharacter] - etFile['TimeStamp'][i - 1]))
-            lastcharacter = i
-    # print(listFix)
-    return listFix
-
 
 def EEGByFixation(link, listFixation):
     eeg_raw = mne.io.read_raw_edf(link + "/EEG.edf")

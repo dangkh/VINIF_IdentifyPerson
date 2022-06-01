@@ -542,6 +542,37 @@ def extractData_byInfo(info):
 
     return datas
 
+def ET2Fixation(etFile):
+    print(etFile.head())
+    # charactertyping
+    n = len(etFile['sentence'])
+    print("Time in ET: ", n / 60, "*" * 10)
+    startTyping = 0
+    stopTyping = n
+    for i in range(n - 1):
+        if etFile['sentence'][i] != "MainMenu":
+            startTyping = i
+            break
+    for i in range(n - 1, 0, -1):
+        if etFile['sentence'][i] != "MainMenu":
+            stopTyping = i
+            break
+
+    # print(startTyping, " ", stopTyping)
+    lastcharacter = startTyping + 1
+    listFix = []
+    for i in range(startTyping + 2, stopTyping - 1):
+        if str(etFile['character typing'][lastcharacter]) != str(etFile['character typing'][i]):
+            tmp = abs(etFile['TimeStamp'][lastcharacter] - etFile['TimeStamp'][i - 1])
+            if tmp >= 1.4 and tmp <= 2.0:
+                listFix.append([etFile['TimeStamp'][lastcharacter], etFile['TimeStamp'][i - 1]])
+                print(etFile['character typing'][lastcharacter], etFile['character typing']
+                      [i], (etFile['TimeStamp'][lastcharacter] - etFile['TimeStamp'][i - 1]))
+            lastcharacter = i
+    # print(listFix)
+    return listFix
+
+
 def extractSub_byInfo(path, info):
     samples = os.listdir(path)
     print(samples)
@@ -551,12 +582,21 @@ def extractSub_byInfo(path, info):
         jsonpath = samplePath + "scenario.json"
         if os.path.isdir(samplePath):
             print(samplePath)
-            # stop
+            if os.path.isfile(samplePath + "/cleanET.csv"):
+                et_raw = pd.read_csv(samplePath + "/cleanET.csv")
+            else:
+                et_raw = pd.read_csv(samplePath + "/ET.csv")
+            listFixation = ET2Fixation(et_raw)
+            
             scenarioNum = -1
             with open(jsonpath) as json_file:
                 datajs = json.load(json_file)
                 scenarioNum = getScenNumber(datajs)
-            listEEG, _ = EEGExtractor_byInfo(samplePath, info)
+
+            if info['extractType']:
+                listEEG, _ = EEGByFixation(samplePath, listFixation)
+            else:
+                listEEG, _ = EEGExtractor_byInfo(samplePath, info)
             data.append([scenarioNum - 1, listEEG, _])
     return data
 
@@ -597,22 +637,63 @@ def EEGExtractor_byInfo(link, info):
     if abs(timeInTs - timeInFrame) > 2:
         return [], []
     print(eeg_data_new.annotations)
-    stop
     listEEG = []
     for annos in eeg_data_new.annotations:
         if annos["description"] != 'Thinking':
             continue
-        print(annos)
         start = annos["onset"] + 0.1
         y = annos["duration"]
         stop = start + y - 0.1
         tmp = eeg_data_new.copy().crop(start, stop)
-        # chon 4 channels
-        # Cz, Fz, Fp1, F7, F3, FC1, C3, FC5, FT9, T7, CP5, CP1, P3, P7, PO9, O1, Pz, Oz, O2, PO10, P8, P4, CP2, CP6, T8, FT10, FC6, C4, FC2, F4, F8, Fp2
-        # matrix = tmp.get_data(picks = ['C3', 'Cz', 'C4', 'CP1', 'CP2']).T
+        matrix = tmp.get_data(picks = info['channelType']).T
 
         # uncomment neu chon toan bo channel
         tmp = tmp.to_data_frame()
         matrix = tmp.iloc[:, 1:].to_numpy()
         listEEG.append(matrix)
     return listEEG, ""
+
+def EEGByFixation_byInfo(link, listFixation, info):
+    eeg_raw = mne.io.read_raw_edf(link + "/EEG.edf")
+    print(eeg_raw.info)
+    eeg_data_new = eeg_raw.copy().load_data().filter(l_freq= float(info['bandL']), h_freq= float(info['bandR']))
+    eegTs = pd.read_csv(link + '/EEGTimeStamp.txt', names=['TimeStamp'])
+    eegTs = eegTs.sort_values(by=['TimeStamp'])
+    print("Time in EEGTS by Frame number: ", len(eegTs) / int(info['windowSize']), "*" * 20)
+    print("Time in EEGTS by TS: ", eegTs["TimeStamp"].iloc[-1] - eegTs["TimeStamp"].iloc[0], "*" * 20)
+    timeInTs = len(eegTs) / int(info['windowSize'])
+    timeInFrame = eegTs["TimeStamp"].iloc[-1] - eegTs["TimeStamp"].iloc[0]
+    if abs(timeInTs - timeInFrame) > 2:
+        return [], []
+    eegStartTs = eegTs["TimeStamp"][0]
+    listEEG = []
+    listDiff = []
+    for idx, rangeFix in enumerate(listFixation):
+        startFix, stopFix = listFixation[idx]
+        print("Fix info: ", startFix, " ", stopFix, " ", stopFix - startFix)
+        if stopFix - startFix <= 0.1:
+            continue
+
+        # get EEG frame by index
+        start = [eegTs[eegTs['TimeStamp'] >= startFix].index[0] /  int(info['windowSize']) + 0.01]
+        # print(eegTs[eegTs['TimeStamp'] <= stopFix])
+        stop = [eegTs[eegTs['TimeStamp'] <= stopFix].index[-1] /  int(info['windowSize'])]
+        # print(start," " ,stop, " ", stop - start )
+
+        diffTs = (stopFix - startFix) - (stop[0] - start[0])
+        # print(diffTs)
+        if start[0] < stop[0]:
+            try:
+                tmp = eeg_data_new.copy().crop(start[0], stop[0])
+                matrix = tmp.get_data(picks = info['channelType']).T
+
+                numFrame = matrix.shape[0]
+                numFrame2time = numFrame /  int(info['windowSize'])
+                diffEEGvET = (stopFix - startFix) - numFrame2time
+                diffEEGvTs = (stop[0] - start[0]) - numFrame2time
+                # print(diffEEGvET, diffEEGvTs)
+                listDiff.append([diffTs, diffEEGvET, diffEEGvTs])
+                listEEG.append(matrix)
+            except Exception as e:
+                print("error")
+    return listEEG, _
