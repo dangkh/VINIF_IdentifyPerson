@@ -60,6 +60,29 @@ def chunk_matrix(list_data, label, size):
 
     return list_matries, y_matries
 
+
+def preprocessDataInfo(inputData, info):
+    result = []
+    numberSub = len(inputData)
+    for subId in range(numberSub):
+        numberSample = len(inputData[subId])
+        subData = inputData[subId]
+        preprocSub = []
+        for sampleId in range(numberSample):
+            scenarioId, listEEG, _ = subData[sampleId]
+            # print(scenarioId)
+            newData, label = chunk_matrix(listEEG, scenarioId, size=int(info['windowSize']))
+            preprocSub.append([newData, label])
+            # break
+        result.append(preprocSub)
+    """
+    result comprises [[dataSub1],[dataSub2]...]
+    dataSubx comprises [[data, scenarioID], [data, scenarioID]]
+    """
+    return result
+
+
+
 def preprocessData(inputData, size):
     result = []
     
@@ -537,6 +560,10 @@ def extractData_byInfo(info):
 
     # print(list_dir)
     for dir in list_dir:
+        if dir[-9:] == '.DS_Store':
+            continue
+        if not os.path.isdir(dir):
+            continue
         data = extractSub_byInfo(dir, info)
         datas.append(data)
 
@@ -587,17 +614,17 @@ def extractSub_byInfo(path, info):
             else:
                 et_raw = pd.read_csv(samplePath + "/ET.csv")
             listFixation = ET2Fixation(et_raw)
-            
+
             scenarioNum = -1
             with open(jsonpath) as json_file:
                 datajs = json.load(json_file)
                 scenarioNum = getScenNumber(datajs)
 
             if info['extractType']:
-                listEEG, _ = EEGByFixation(samplePath, listFixation)
+                listEEG, _ = EEGByFixation_byInfo(samplePath, listFixation, info)
             else:
                 listEEG, _ = EEGExtractor_byInfo(samplePath, info)
-            data.append([scenarioNum - 1, listEEG, _])
+            data.append([scenarioNum - 1, listEEG, ''])
     return data
 
 
@@ -696,4 +723,4 @@ def EEGByFixation_byInfo(link, listFixation, info):
                 listEEG.append(matrix)
             except Exception as e:
                 print("error")
-    return listEEG, _
+    return listEEG, ''

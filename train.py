@@ -37,7 +37,7 @@ if __name__ == "__main__":
     parser.add_argument('--eaNorm', help = 'EA norm')
     parser.add_argument('--channelType', help = 'channel seclection in : {}'.format(channelCombos), default = 3)
     parser.add_argument('--windowSize', help = 'windowSize', default = 120)
-    parser.add_argument('--extractType', help = 'type of extraction in eeg. Fixation: True. All: False', default = True)
+    parser.add_argument('--extractType', help = 'type of extraction in eeg. Fixation: True. All: False', default = False)
     parser.add_argument('--trainTestSeperate', help = 'train first then test. if not, train and test are splitted randomly', default = False)
     parser.add_argument('--trainTestSession', help = 'train test are splitted by session', default = True)
     args = parser.parse_args()
@@ -55,7 +55,7 @@ if __name__ == "__main__":
             break
 
     tmpExtract = 'Fixation'
-    if not args.extractType:
+    if args.extractType == 'True':
         tmpExtract = 'All'
     tmp = 'trainTestRandom'
     if args.trainTestSeperate:
@@ -63,13 +63,13 @@ if __name__ == "__main__":
     if args.trainTestSession and args.trainTestSeperate:
         tmp = 'trainTestSession'
 
-    dataLink = prePath + '/' + 'band_' + str(args.bandL) + '_' + str(args.bandR) + '_channelType_'+ str(args.channelType) + '_' + tmp + '_' + tmpExtract+'.npy'
+    dataLink = prePath + '/' + 'band_' + str(args.bandL) + '_' + str(args.bandR) + '_channelType_' + str(args.channelType) + '_' + tmp + '_' + tmpExtract + '.npy'
     print(dataLink)
     if not os.path.exists(dataLink):
         info = {
-            'bandL':        args.bandL, 
+            'bandL':        args.bandL,
             'bandR':        args.bandR, 
-            'windowSize':   args.windowSize, 
+            'windowSize':   args.windowSize,
             'listPaths':    listPaths,
             'EA':           args.eaNorm,
             'extractType':  args.extractType,
@@ -77,7 +77,9 @@ if __name__ == "__main__":
             }
         datas = extractData_byInfo(info)
         print("Number of subjects in data: ", len(datas))
-        PreProDatas = preprocessData(datas, 128)
+        PreProDatas = preprocessDataInfo(datas, info)
         np.save(dataLink, PreProDatas)
     else:
         PreProDatas = np.load(dataLink, allow_pickle=True)
+
+
