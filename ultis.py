@@ -245,13 +245,10 @@ def getDataScenario(inputData, testIndex):
 
 
 # get MI data all of it
-def getDataMI_All(inputData):
+def getData_All(inputData):
     data, label = [], []
     for id, dataSub in enumerate(inputData):
-        for dataSample, scenario in dataSub:
-            # tmp = 0
-            # if id > 10: 
-            #     tmp = 1
+        for dataSample, _ in dataSub:
             data.extend(dataSample)
             label.extend([id]*len(dataSample))
     return np.asarray(data), np.asarray(label)
@@ -262,7 +259,7 @@ def getDataMI_All_byPerson(inputData, personID = 0, personList = 0):
     # for id, dataSub in enumerate(inputData[personID]):
     id = personID
     dataSub = inputData[personID]
-    for dataSample, scenario in dataSub:
+    for dataSample, _ in dataSub:
         # tmp = 0
         # if id > 10: 
         #     tmp = 1
@@ -613,14 +610,16 @@ def extractSub_byInfo(path, info):
                 et_raw = pd.read_csv(samplePath + "/cleanET.csv")
             else:
                 et_raw = pd.read_csv(samplePath + "/ET.csv")
+            print('*'*8,"Extracting Fixation", '*'*8)
             listFixation = ET2Fixation(et_raw)
+            print('*'*8,"Extracting Fixation Finished", '*'*8)
 
             scenarioNum = -1
             with open(jsonpath) as json_file:
                 datajs = json.load(json_file)
                 scenarioNum = getScenNumber(datajs)
 
-            if info['extractType']:
+            if info['extractFixation']:
                 listEEG, _ = EEGByFixation_byInfo(samplePath, listFixation, info)
             else:
                 listEEG, _ = EEGExtractor_byInfo(samplePath, info)
@@ -724,3 +723,29 @@ def EEGByFixation_byInfo(link, listFixation, info):
             except Exception as e:
                 print("error")
     return listEEG, ''
+
+# Calculate FFT of data Pos or Neg
+def GetFFT(datas):
+    sampling_length = 128
+    fft_rs = []
+    for data in datas:
+        ts = 1.0/ 128
+
+        freq = np.fft.fftfreq(len(data), d = ts)
+        fft = np.fft.fft(data)
+        fft_rs.append(fft)
+
+    return fft_rs, freq
+
+# Calculate Power Spectral Density(PSD) (equation 1)
+def GetPSD(datas):
+    sampling_length = 128
+    PSD_rs = []
+    for data in datas:
+        PSD_seg = []
+        for d in data:
+            PSD_n = d * np.conjugate(d)/128
+            PSD_seg.append(PSD_n)
+        PSD_rs.append(PSD_seg)
+  
+    return PSD_rs

@@ -2,6 +2,13 @@ import numpy as np
 import argparse
 import os
 from ultis import *
+from distutils.util import strtobool
+from sklearn import svm
+from sklearn.svm import SVC
+from sklearn.svm import LinearSVC
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.datasets import make_classification
 
 channelCombos = [   
                     ['C3', 'Cz', 'C4', 'CP1', 'CP2'], ['F3', 'F4', 'C3', 'C4'], ['Fp1', 'Fp2', 'F7', 'F3', 'F4', 'F8', 'T7', 'C3', 'Cz', 'C4', 'T8', 'P7', 'P3', 'Pz', 'P4', 'P8'], 
@@ -9,61 +16,46 @@ channelCombos = [
                     'FT10', 'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2']
                 ]
 persons = [10, 9, 6]
-def get_data(dataName, expType=1, expIndex=1):
-    # get data rgd to dataName
-    # type = [1, 2, 3] rgd with ["none", "scenario", "phase"]
-    dataList = ["VIN", "PLOS", "Phy"]
-    if dataName not in dataList:
-        return None
-    if dataName == "VIN":
-        list_dir = subInVIN()
-        print(list_dir)
-        data = getDataByDir(list_dir)
-        data = convertData2Numpy(data, expType, expIndex)
-    elif dataName == "PLOS":
-        pass
-    else:
-        pass
-
-    return data
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'train')
     parser.add_argument('--input', help = 'input data dir')
     parser.add_argument('--modelName', help = 'name of model')
-    parser.add_argument('--bandL', help = 'band filter', default = 4.0)
-    parser.add_argument('--bandR', help = 'band filter', default = 50.0)
-    parser.add_argument('--eaNorm', help = 'EA norm')
-    parser.add_argument('--channelType', help = 'channel seclection in : {}'.format(channelCombos), default = 3)
-    parser.add_argument('--windowSize', help = 'windowSize', default = 120)
-    parser.add_argument('--extractType', help = 'type of extraction in eeg. Fixation: True. All: False', default = False)
-    parser.add_argument('--trainTestSeperate', help = 'train first then test. if not, train and test are splitted randomly', default = False)
-    parser.add_argument('--trainTestSession', help = 'train test are splitted by session', default = True)
+    parser.add_argument('--bandL', help = 'band filter', default = 4.0, type= float)
+    parser.add_argument('--bandR', help = 'band filter', default = 50.0, type= float)
+    parser.add_argument('--eaNorm', help = 'EA norm', default = 'False')
+    parser.add_argument('--channelType', help = 'channel seclection in : {}'.format(channelCombos), default = 3, type=int)
+    parser.add_argument('--windowSize', help = 'windowSize', default = 120, type=int)
+    parser.add_argument('--extractFixation', help = 'type of extraction in eeg. Fixation: True. All: False', default = 'False')
+    parser.add_argument('--trainTestSeperate', help = 'train first then test. if not, train and test are splitted randomly', default = 'False')
+    parser.add_argument('--trainTestSession', help = 'train test are splitted by session', default = 'True')
     args = parser.parse_args()
     print(args)
 
     listPaths = []
-    numberObject = 17
+    numberObject = 24
     counter = 0
 
     prePath = args.input
     for x in os.listdir(prePath):
-        listPaths.append(prePath + '/' + x)
-        counter += 1
-        if counter > numberObject:
-            break
+        if x != "BN001" and x != "K317" and x != "BN002" and x != "K299" and x != "K305":
+            listPaths.append(prePath + '/' + x)
+            counter += 1
+            if counter > numberObject:
+                break
 
     tmpExtract = 'Fixation'
-    if args.extractType == 'True':
+    if not strtobool(args.extractFixation):
         tmpExtract = 'All'
     tmp = 'trainTestRandom'
-    if args.trainTestSeperate:
+    if strtobool(args.trainTestSeperate):
         tmp = 'trainTestSeperate'
-    if args.trainTestSession and args.trainTestSeperate:
+    if strtobool(args.trainTestSession) and strtobool(args.trainTestSeperate):
         tmp = 'trainTestSession'
 
-    dataLink = prePath + '/' + 'band_' + str(args.bandL) + '_' + str(args.bandR) + '_channelType_' + str(args.channelType) + '_' + tmp + '_' + tmpExtract + '.npy'
+    dataName = './' + 'band_' + str(args.bandL) + '_' + str(args.bandR) + '_channelType_' + str(args.channelType) + '_' + tmp + '_' + tmpExtract
+    dataLink = dataName + '.npy'
     print(dataLink)
     if not os.path.exists(dataLink):
         info = {
@@ -71,8 +63,8 @@ if __name__ == "__main__":
             'bandR':        args.bandR, 
             'windowSize':   args.windowSize,
             'listPaths':    listPaths,
-            'EA':           args.eaNorm,
-            'extractType':  args.extractType,
+            'EA':           strtobool(args.eaNorm),
+            'extractFixation':  strtobool(args.extractFixation),
             'channelType':  args.channelType
             }
         datas = extractData_byInfo(info)
@@ -82,4 +74,51 @@ if __name__ == "__main__":
     else:
         PreProDatas = np.load(dataLink, allow_pickle=True)
 
+    if strtobool(args.trainTestSeperate):
+        X_f, y_f = getData_All(PreProDatas)
+    else:
+        X_f, y_f = getData_All(PreProDatas)
+        X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state=42)
+    
+    if strtobool(args.eaNorm):
+        dataLink = dataName + '_COV.txt'   
+        if not os.path.exists(dataLink):
+            normR = getNormR(X_train)
+            normR = sqrtm(normR)
+            normR = np.linalg.inv(normR)
+            np.savetxt(dataLink, normR, fmt= '%.3f')
+        else:
+            normR = np.loadtxt(dataLink)
 
+        for ii in range(len(X_train)):
+            Xnew = np.matmul(normR, X_train[ii])
+            tmp.append(Xnew)
+        X_train = np.asarray(tmp)
+        tmp = []
+        for ii in range(len(X_test)):
+            Xnew = np.matmul(normR, X_test[ii])
+            tmp.append(Xnew)
+        X_test = np.asarray(tmp)
+
+    # model PSD + SVM
+    fft_rs, freq = GetFFT(X_train)
+    newXTrain = GetPSD(fft_rs)
+    newXTrain = np.asarray(newXTrain)
+    newXTrain = newXTrain.real
+    newXTrain = newXTrain.reshape(len(newXTrain), -1)
+    fft_rs, freq = GetFFT(X_test)
+    newXTest = GetPSD(fft_rs)
+    newXTest = np.asarray(newXTest)
+    newXTest = newXTest.real
+    newXTest = newXTest.reshape(len(newXTest), -1)
+    
+    clf = make_pipeline(StandardScaler(), SVC(kernel="linear", C=0.025))
+    clf.fit(newXTrain, y_train)
+    predicted = clf.predict(newXTest)
+    predicted = np.asarray(predicted)
+    counter = 0 
+    for i in range(len(predicted)):
+        if predicted[i] == y_test[i]:
+            counter += 1
+    print(counter * 100.0 / len(predicted))
+    stop
