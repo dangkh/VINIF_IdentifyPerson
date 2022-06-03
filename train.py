@@ -9,6 +9,7 @@ from sklearn.svm import LinearSVC
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import make_classification
+from scipy.linalg import sqrtm
 
 channelCombos = [   
                     ['C3', 'Cz', 'C4', 'CP1', 'CP2'], ['F3', 'F4', 'C3', 'C4'], ['Fp1', 'Fp2', 'F7', 'F3', 'F4', 'F8', 'T7', 'C3', 'Cz', 'C4', 'T8', 'P7', 'P3', 'Pz', 'P4', 'P8'], 
@@ -34,7 +35,7 @@ if __name__ == "__main__":
     print(args)
 
     listPaths = []
-    numberObject = 24
+    numberObject = 20
     counter = 0
 
     prePath = args.input
@@ -78,12 +79,10 @@ if __name__ == "__main__":
         X_f, y_f = getData_All(PreProDatas)
     else:
         X_f, y_f = getData_All(PreProDatas)
-    X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state=42)
-    # X_train, y_train = augmentData(X_train, y_train, np.unique(y_train))
-    
-    # print(X_train.shape)
-    mean = np.mean(X_train, axis=0, keepdims=True)
-    std = np.std(X_train, axis=0, keepdims=True)
+        X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state=42)
+
+    mean = np.mean(X_train, axis = 0, keepdims = True)
+    std = np.std(X_train, axis = 0, keepdims = True)
     X_train = (X_train - mean) / std
     X_test = (X_test - mean) / std
 
@@ -93,10 +92,12 @@ if __name__ == "__main__":
             normR = getNormR(X_train)
             normR = sqrtm(normR)
             normR = np.linalg.inv(normR)
-            np.savetxt(dataLink, normR, fmt= '%.3f')
+            np.savetxt(dataLink, normR, fmt= '%.5f')
         else:
             normR = np.loadtxt(dataLink)
+            print(normR)
 
+        tmp = []
         for ii in range(len(X_train)):
             Xnew = np.matmul(normR, X_train[ii])
             tmp.append(Xnew)
@@ -109,7 +110,8 @@ if __name__ == "__main__":
 
     # model PSD + SVM
     tmp = []
-    for xx in X_train:
+    for xxx in X_train:
+        xx = xxx.T
         fft_rs, freq = GetFFT(xx)
         newX = GetPSD(fft_rs)
         newX = np.asarray(newX)
@@ -119,7 +121,8 @@ if __name__ == "__main__":
     X_train = np.vstack(tmp)
 
     tmp = []
-    for xx in X_test:
+    for xxx in X_test:
+        xx = xxx.T
         fft_rs, freq = GetFFT(xx)
         newX = GetPSD(fft_rs)
         newX = np.asarray(newX)

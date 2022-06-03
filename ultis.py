@@ -709,6 +709,7 @@ def EEGByFixation_byInfo(link, listFixation, info):
 
         diffTs = (stopFix - startFix) - (stop[0] - start[0])
         # print(diffTs)
+
         if start[0] < stop[0]:
             try:
                 tmp = eeg_data_new.copy().crop(start[0], stop[0])
