@@ -65,7 +65,7 @@ if __name__ == "__main__":
             'listPaths':    listPaths,
             'EA':           strtobool(args.eaNorm),
             'extractFixation':  strtobool(args.extractFixation),
-            'channelType':  args.channelType
+            'channelType':  channelCombos[args.channelType]
             }
         datas = extractData_byInfo(info)
         print("Number of subjects in data: ", len(datas))
@@ -78,8 +78,15 @@ if __name__ == "__main__":
         X_f, y_f = getData_All(PreProDatas)
     else:
         X_f, y_f = getData_All(PreProDatas)
-        X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state=42)
+    # X_train, y_train = augmentData(X_train, y_train, np.unique(y_train))
     
+    # print(X_train.shape)
+    mean = np.mean(X_train, axis=0, keepdims=True)
+    std = np.std(X_train, axis=0, keepdims=True)
+    X_train = (X_train - mean) / std
+    X_test = (X_test - mean) / std
+
     if strtobool(args.eaNorm):
         dataLink = dataName + '_COV.txt'   
         if not os.path.exists(dataLink):
@@ -101,20 +108,29 @@ if __name__ == "__main__":
         X_test = np.asarray(tmp)
 
     # model PSD + SVM
-    fft_rs, freq = GetFFT(X_train)
-    newXTrain = GetPSD(fft_rs)
-    newXTrain = np.asarray(newXTrain)
-    newXTrain = newXTrain.real
-    newXTrain = newXTrain.reshape(len(newXTrain), -1)
-    fft_rs, freq = GetFFT(X_test)
-    newXTest = GetPSD(fft_rs)
-    newXTest = np.asarray(newXTest)
-    newXTest = newXTest.real
-    newXTest = newXTest.reshape(len(newXTest), -1)
+    tmp = []
+    for xx in X_train:
+        fft_rs, freq = GetFFT(xx)
+        newX = GetPSD(fft_rs)
+        newX = np.asarray(newX)
+        newX = newX.real
+        newX = newX.reshape(-1)
+        tmp.append(newX)
+    X_train = np.vstack(tmp)
+
+    tmp = []
+    for xx in X_test:
+        fft_rs, freq = GetFFT(xx)
+        newX = GetPSD(fft_rs)
+        newX = np.asarray(newX)
+        newX = newX.real
+        newX = newX.reshape(-1)
+        tmp.append(newX)
+    X_test = np.vstack(tmp)
     
     clf = make_pipeline(StandardScaler(), SVC(kernel="linear", C=0.025))
-    clf.fit(newXTrain, y_train)
-    predicted = clf.predict(newXTest)
+    clf.fit(X_train, y_train)
+    predicted = clf.predict(X_test)
     predicted = np.asarray(predicted)
     counter = 0 
     for i in range(len(predicted)):

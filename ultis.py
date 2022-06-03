@@ -365,14 +365,14 @@ def augmentData(Xs, Ys, labels):
         X_source = Xs[np.where(Ys == label)]
         y_source = Ys[np.where(Ys == label)]
         datanoise, targetnoise = addNoise(X_source, y_source)
-        # dataRemove, targetRemove = randomRemoveSample(X_source, y_source)
-        # dataSwap, targetSwap = randomSwapSample(X_source, y_source)
+        dataRemove, targetRemove = randomRemoveSample(X_source, y_source)
+        dataSwap, targetSwap = randomSwapSample(X_source, y_source)
         newXs.extend(datanoise)
-        # newXs.extend(dataRemove)
-        # newXs.extend(dataSwap)
+        newXs.extend(dataRemove)
+        newXs.extend(dataSwap)
         newYs.extend(targetnoise)
-        # newYs.extend(targetRemove)
-        # newYs.extend(targetSwap)
+        newYs.extend(targetRemove)
+        newYs.extend(targetSwap)
     newXs.extend(Xs)
     newYs.extend(Ys)
     return np.asarray(newXs), np.asarray(newYs)
@@ -588,7 +588,7 @@ def ET2Fixation(etFile):
     for i in range(startTyping + 2, stopTyping - 1):
         if str(etFile['character typing'][lastcharacter]) != str(etFile['character typing'][i]):
             tmp = abs(etFile['TimeStamp'][lastcharacter] - etFile['TimeStamp'][i - 1])
-            if tmp >= 1.4 and tmp <= 2.0:
+            if tmp >= 1.4 and tmp <= 1.7:
                 listFix.append([etFile['TimeStamp'][lastcharacter], etFile['TimeStamp'][i - 1]])
                 print(etFile['character typing'][lastcharacter], etFile['character typing']
                       [i], (etFile['TimeStamp'][lastcharacter] - etFile['TimeStamp'][i - 1]))
@@ -694,6 +694,7 @@ def EEGByFixation_byInfo(link, listFixation, info):
     eegStartTs = eegTs["TimeStamp"][0]
     listEEG = []
     listDiff = []
+
     for idx, rangeFix in enumerate(listFixation):
         startFix, stopFix = listFixation[idx]
         print("Fix info: ", startFix, " ", stopFix, " ", stopFix - startFix)
@@ -712,7 +713,6 @@ def EEGByFixation_byInfo(link, listFixation, info):
             try:
                 tmp = eeg_data_new.copy().crop(start[0], stop[0])
                 matrix = tmp.get_data(picks = info['channelType']).T
-
                 numFrame = matrix.shape[0]
                 numFrame2time = numFrame /  int(info['windowSize'])
                 diffEEGvET = (stopFix - startFix) - numFrame2time
