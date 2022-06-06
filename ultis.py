@@ -750,3 +750,14 @@ def GetPSD(datas):
         PSD_rs.append(PSD_seg)
   
     return PSD_rs
+
+def moving_average(x, w):
+    return np.convolve(x, np.ones(w), 'valid') / w
+
+def MA(datas, windowSize = 4):
+    newData = []
+    for data in datas:
+        tmp = moving_average(data, windowSize)
+        newData.append(tmp)
+
+    return np.vstack(newData)

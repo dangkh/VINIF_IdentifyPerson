@@ -16,18 +16,21 @@ channelCombos = [
                     ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'FT9', 'T7', 'CP5', 'CP1', 'P3', 'P7', 'PO9', 'O1', 'Pz', 'Oz', 'O2', 'PO10', 'P8', 'P4', 'CP2', 'CP6', 'T8', 
                     'FT10', 'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2']
                 ]
+
+listMethods = ['PSD + SVM', 'IHAR + SVM']
 persons = [10, 9, 6]
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'train')
     parser.add_argument('--input', help = 'input data dir')
-    parser.add_argument('--modelName', help = 'name of model')
+    parser.add_argument('--modelName', help = 'name of model : {}'.format(listMethods))
     parser.add_argument('--bandL', help = 'band filter', default = 4.0, type= float)
     parser.add_argument('--bandR', help = 'band filter', default = 50.0, type= float)
     parser.add_argument('--eaNorm', help = 'EA norm', default = 'False')
     parser.add_argument('--channelType', help = 'channel seclection in : {}'.format(channelCombos), default = 3, type=int)
     parser.add_argument('--windowSize', help = 'windowSize', default = 120, type=int)
+    parser.add_argument('--windowIHAR', help = 'windowIHAR', default = 10, type=int)
     parser.add_argument('--extractFixation', help = 'type of extraction in eeg. Fixation: True. All: False', default = 'False')
     parser.add_argument('--trainTestSeperate', help = 'train first then test. if not, train and test are splitted randomly', default = 'False')
     parser.add_argument('--trainTestSession', help = 'train test are splitted by session', default = 'True')
@@ -108,36 +111,70 @@ if __name__ == "__main__":
             tmp.append(Xnew)
         X_test = np.asarray(tmp)
 
-    # model PSD + SVM
-    tmp = []
-    for xxx in X_train:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_train = np.vstack(tmp)
-
-    tmp = []
-    for xxx in X_test:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_test = np.vstack(tmp)
     
-    clf = make_pipeline(StandardScaler(), SVC(kernel="linear", C=0.025))
-    clf.fit(X_train, y_train)
-    predicted = clf.predict(X_test)
-    predicted = np.asarray(predicted)
-    counter = 0 
-    for i in range(len(predicted)):
-        if predicted[i] == y_test[i]:
-            counter += 1
-    print(counter * 100.0 / len(predicted))
-    stop
+    if args.modelName == '1':
+        # model PSD + SVM    
+        tmp = []
+        for xxx in X_train:
+            xx = xxx.T
+            fft_rs, freq = GetFFT(xx)
+            newX = GetPSD(fft_rs)
+            newX = np.asarray(newX)
+            newX = newX.real
+            newX = newX.reshape(-1)
+            tmp.append(newX)
+        X_train = np.vstack(tmp)
+
+        tmp = []
+        for xxx in X_test:
+            xx = xxx.T
+            fft_rs, freq = GetFFT(xx)
+            newX = GetPSD(fft_rs)
+            newX = np.asarray(newX)
+            newX = newX.real
+            newX = newX.reshape(-1)
+            tmp.append(newX)
+        X_test = np.vstack(tmp)
+        
+        clf = make_pipeline(StandardScaler(), SVC(kernel="linear", C=0.025))
+        clf.fit(X_train, y_train)
+        predicted = clf.predict(X_test)
+        predicted = np.asarray(predicted)
+        counter = 0 
+        for i in range(len(predicted)):
+            if predicted[i] == y_test[i]:
+                counter += 1
+        print(counter * 100.0 / len(predicted))
+    else:
+        # model IHAR + SVM
+        electrodeIHAR = [[ 'Fp1', 'F7', 'F3', 'FC5', 'T7', 'P7', 'O1'], [ 'Fp2', 'F8', 'F4', 'FC6', 'T8', 'P8', 'O2']]
+        numNode = len(electrodeIHAR[0])
+        electrodeIndex = []
+        for electrodes in electrodeIHAR:
+            electrodeIndex.append([channelCombos[-1].index(x) for x in electrodes])
+        tmp = []
+        for xxx in X_train:
+            xx = xxx.T
+            fft_rs, freq = GetFFT(xx)
+            newX = GetPSD(fft_rs)
+            newX = np.asarray(newX)
+            newX = MA(newX, args.windowIHAR)
+            for ii in range(numNode):
+                left = 
+            newX = newX.real
+            newX = newX.reshape(-1)
+            tmp.append(newX)
+        X_train = np.vstack(tmp)
+
+        tmp = []
+        for xxx in X_test:
+            xx = xxx.T
+            fft_rs, freq = GetFFT(xx)
+            newX = GetPSD(fft_rs)
+            newX = np.asarray(newX)
+            newX = moving_average(newX, args.windowIHAR)
+            newX = newX.real
+            newX = newX.reshape(-1)
+            tmp.append(newX)
+        X_test = np.vstack(tmp)
+    # 
