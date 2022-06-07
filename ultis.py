@@ -9,6 +9,7 @@ from nets import *
 import json
 import mne
 import pandas as pd
+import sys
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -379,7 +380,7 @@ def augmentData(Xs, Ys, labels):
 
 
 def chooseModel(modelName, num_class, input_size=None):
-    if modelName == "CNN2D":
+    if modelName == "CNN":
         keys = list(paramsCNN2D)
         d = {
             'kernel_size': paramsCNN2D['kernel_size'][1],
@@ -421,7 +422,7 @@ def chooseModel(modelName, num_class, input_size=None):
     return model
 
 
-def evaluateModel(model, plotConfusion, dataLoader, n_class, adj):
+def evaluateModel(model, plotConfusion, dataLoader, n_class):
     counter = 0
     total = 0
     preds = []
@@ -665,11 +666,11 @@ def EEGExtractor_byInfo(link, info):
     print(eeg_data_new.annotations)
     listEEG = []
     for annos in eeg_data_new.annotations:
-        if annos["description"] != 'Thinking':
+        if annos["description"] != 'Resting':
             continue
-        start = annos["onset"] + 0.1
+        start = annos["onset"] + 1.1
         y = annos["duration"]
-        stop = start + y - 0.1
+        stop = start + y - 1.1
         tmp = eeg_data_new.copy().crop(start, stop)
         matrix = tmp.get_data(picks = info['channelType']).T
 
@@ -761,3 +762,58 @@ def MA(datas, windowSize = 4):
         newData.append(tmp)
 
     return np.vstack(newData)
+
+def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, validLoader, n_class, log_batch):
+    llos = []
+    best_acc = 0
+    for epoch in range(n_epochs):  # loop over the dataset multiple times
+        model.train()
+        print("")
+        print("epoch:  {0} / {1}   ".format(epoch, n_epochs))
+        running_loss = []
+        total_loss = 0
+        for i, data in enumerate(trainLoader):
+            # get the inputs; data is a list of [inputs, labels]
+            inputs, labels = data
+            labels = labels.type(torch.LongTensor)
+            # CUDA
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            # zero the parameter gradients
+            optimizer.zero_grad()
+
+            # forward + backward + optimize
+            # mat = np.asarray(inputs)
+            # s1, s2, s3, s4 = mat.shape
+            # mat = mat.reshape(s1*s2, s3, s4)
+            # coMat = mat.mean(axis = 0)
+            # Adj = np.abs(np.corrcoef(coMat[:,:].T))
+            # matAdj = torch.Tensor(Adj).to(device)
+            # outputs = model(inputs, adj)
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            # print statistics
+            running_loss += [loss.item()]
+            total_loss += loss.item()
+            if (i + 1) % log_batch == 0:    # print every 200 mini-batches
+                # print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / log_batch))
+                percent = int(i * 50 / len(trainLoader))
+                remain = 50 - percent
+                sys.stdout.write("\r[{0}] {1}% loss: {2: 3f}".format(
+                    '#' * percent + '-' * remain, percent * 2, np.mean(running_loss)))
+                sys.stdout.flush()
+
+                # if (i + 1) / log_batch >= 10:
+                #    break
+
+        mean_loss = total_loss / len(trainLoader)
+        llos.append(mean_loss)
+        scheduler.step()
+        sys.stdout.write("\r[{0}] {1}% loss: {2: 3f}".format('#' * 50, 100, mean_loss))
+        sys.stdout.flush()
+        acc = evaluateModel(model, plotConfusion=False, dataLoader=validLoader, n_class=n_class)
+        accTrain = evaluateModel(model, plotConfusion=False, dataLoader=trainLoader, n_class=n_class)
+    return model, llos, acc, accTrain

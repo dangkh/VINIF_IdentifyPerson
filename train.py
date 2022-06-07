@@ -11,6 +11,14 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import make_classification
 from scipy.linalg import sqrtm
 
+from torch.utils.data import DataLoader, Dataset
+from torchvision import transforms
+import torch
+import sys
+from ultis import *
+from nets import *
+import random
+
 channelCombos = [   
                     ['C3', 'Cz', 'C4', 'CP1', 'CP2'], ['F3', 'F4', 'C3', 'C4'], ['Fp1', 'Fp2', 'F7', 'F3', 'F4', 'F8', 'T7', 'C3', 'Cz', 'C4', 'T8', 'P7', 'P3', 'Pz', 'P4', 'P8'], 
                     ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'FT9', 'T7', 'CP5', 'CP1', 'P3', 'P7', 'PO9', 'O1', 'Pz', 'Oz', 'O2', 'PO10', 'P8', 'P4', 'CP2', 'CP6', 'T8', 
@@ -20,6 +28,11 @@ channelCombos = [
 listMethods = ['PSD + SVM', 'IHAR + SVM']
 persons = [10, 9, 6]
 
+def setSeed(seed):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'train')
@@ -82,12 +95,12 @@ if __name__ == "__main__":
         X_f, y_f = getData_All(PreProDatas)
     else:
         X_f, y_f = getData_All(PreProDatas)
-        X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state=50)
 
-    mean = np.mean(X_train, axis = 0, keepdims = True)
-    std = np.std(X_train, axis = 0, keepdims = True)
-    X_train = (X_train - mean) / std
-    X_test = (X_test - mean) / std
+    # mean = np.mean(X_train, axis = 0, keepdims = True)
+    # std = np.std(X_train, axis = 0, keepdims = True)
+    # X_train = (X_train - mean) / std
+    # X_test = (X_test - mean) / std
 
     if strtobool(args.eaNorm):
         dataLink = dataName + '_COV.txt'   
@@ -98,7 +111,6 @@ if __name__ == "__main__":
             np.savetxt(dataLink, normR, fmt= '%.5f')
         else:
             normR = np.loadtxt(dataLink)
-            print(normR)
 
         tmp = []
         for ii in range(len(X_train)):
@@ -112,7 +124,7 @@ if __name__ == "__main__":
         X_test = np.asarray(tmp)
 
     
-    if args.modelName == '1':
+    if args.modelName == 'PSD':
         # model PSD + SVM    
         tmp = []
         for xxx in X_train:
@@ -145,7 +157,7 @@ if __name__ == "__main__":
             if predicted[i] == y_test[i]:
                 counter += 1
         print(counter * 100.0 / len(predicted))
-    else:
+    elif args.modelName == 'IHAR':
         # model IHAR + SVM
         electrodeIHAR = [[ 'Fp1', 'F7', 'F3', 'FC5', 'T7', 'P7', 'O1'], [ 'Fp2', 'F8', 'F4', 'FC6', 'T8', 'P8', 'O2']]
         numNode = len(electrodeIHAR[0])
@@ -158,10 +170,16 @@ if __name__ == "__main__":
             fft_rs, freq = GetFFT(xx)
             newX = GetPSD(fft_rs)
             newX = np.asarray(newX)
-            newX = MA(newX, args.windowIHAR)
-            for ii in range(numNode):
-                left = 
             newX = newX.real
+            newX = MA(newX, args.windowIHAR)
+            IharTrain = []
+            for ii in range(numNode):
+                left = newX[electrodeIndex[0][ii]]
+                right = newX[electrodeIndex[1][ii]]
+                ihar = left / right
+                IharTrain.append(ihar)
+            # IharTrain.append(newX)
+            newX = np.vstack([np.vstack(IharTrain), newX])
             newX = newX.reshape(-1)
             tmp.append(newX)
         X_train = np.vstack(tmp)
@@ -172,9 +190,58 @@ if __name__ == "__main__":
             fft_rs, freq = GetFFT(xx)
             newX = GetPSD(fft_rs)
             newX = np.asarray(newX)
-            newX = moving_average(newX, args.windowIHAR)
             newX = newX.real
+            newX = MA(newX, args.windowIHAR)
+            IharTrain = []
+            for ii in range(numNode):
+                left = newX[electrodeIndex[0][ii]]
+                right = newX[electrodeIndex[1][ii]]
+                ihar = left / right
+                IharTrain.append(ihar)
+            # IharTrain.append(newX)
+            newX = np.vstack([np.vstack(IharTrain), newX])
             newX = newX.reshape(-1)
             tmp.append(newX)
         X_test = np.vstack(tmp)
+
+        clf = make_pipeline(StandardScaler(), SVC(kernel="linear", C=0.025))
+        clf.fit(X_train, y_train)
+        predicted = clf.predict(X_test)
+        predicted = np.asarray(predicted)
+        counter = 0 
+        for i in range(len(predicted)):
+            if predicted[i] == y_test[i]:
+                counter += 1
+        print(counter * 100.0 / len(predicted))
+    elif args.modelName == 'WLD':
+        # WLD model
+        pass
+    elif args.modelName == 'CNN':
+        setSeed(100)
+        n_samples, n_timestamp, n_channels = X_train.shape
+        X_train = X_train.reshape((n_samples, n_timestamp, n_channels, 1))
+        X_train = np.transpose(X_train, (0, 3, 1, 2))
+
+        n_samples, n_timestamp, n_channels = X_test.shape
+        X_test = X_test.reshape((n_samples, n_timestamp, n_channels, 1))
+        X_test = np.transpose(X_test, (0, 3, 1, 2))
+        trainLoader, validLoader = TrainTestLoader([X_train, y_train, X_test, y_test])
+        num_class = len(np.unique(y_train))
+
+        listModelName = []
+        model = chooseModel("CNN_LSTM", num_class = num_class, input_size=(1, X_train.shape[2], X_train.shape[3]))
+        print("Model architecture >>>", model)
+        model.to(device)
+        criterion = nn.CrossEntropyLoss()
+        lr = 1e-4
+        optimizer = optim.Adam(model.parameters(), lr=lr)
+        scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
+        n_epochs = 11
+
+        _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader,
+                                            validLoader, n_class=num_class, log_batch=len(trainLoader) // 30)
+        print(acc)
+        print(accTrain)
+    else:
+        pass
     # 
