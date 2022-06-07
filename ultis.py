@@ -163,7 +163,8 @@ class EEG_data(Dataset):
         mean = np.mean(datas, axis=3, keepdims=True)
         std = np.std(datas, axis=3, keepdims=True)
         self.X = (datas - mean) / std
-        self.X = self.X.astype(np.float32) * 1e3
+        # self.X = np.asarray(datas)
+        self.X = self.X.astype(np.float32) 
 
     def __len__(self):
         return len(self.X)
@@ -390,7 +391,7 @@ def chooseModel(modelName, num_class, input_size=None):
                         kernel_size     = d['kernel_size'],
                         conv_channels   = d['conv_channels'],
                         dense_size      = 128,
-                        dropout         = 0.5, 
+                        dropout         = 0.75, 
                         nclass          = num_class)
     elif modelName == "CNN_LSTM":
         keys = list(paramsCNN2D)
@@ -402,7 +403,7 @@ def chooseModel(modelName, num_class, input_size=None):
                         kernel_size   = d['kernel_size'],
                         conv_channels = d['conv_channels'],
                         dense_size    = 128,
-                        dropout       = 0.5, 
+                        dropout       = 0.75, 
                         nclass = num_class)
     elif modelName == "GCN":
         keys = list(paramsCNN2D)

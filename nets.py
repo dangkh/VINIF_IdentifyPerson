@@ -36,7 +36,7 @@ class CNN2D(torch.nn.Module):
                  dense_size, nclass, dropout):
         super(CNN2D, self).__init__()
         self.cconv = []
-        self.MaxPool = nn.MaxPool2d((1, 2), (1, 2))
+        self.MaxPool = nn.MaxPool2d((2, 1), (2, 1))
         self.ReLU = nn.ReLU()
         self.Dropout = nn.Dropout(dropout)
         self.batchnorm = []

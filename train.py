@@ -97,26 +97,35 @@ if __name__ == "__main__":
         X_f, y_f = getData_All(PreProDatas)
         X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state=50)
 
+    mean = np.mean(np.mean(X_train, axis = 2, keepdims = False), axis = 0)
     # mean = np.mean(X_train, axis = 0, keepdims = True)
+    mean = mean.reshape(len(mean), 1)
+    meanMat = np.matmul(mean, np.ones([1, 32]))
+    std = np.mean(np.std(X_train, axis = 2, keepdims = False), axis = 0)
     # std = np.std(X_train, axis = 0, keepdims = True)
-    # X_train = (X_train - mean) / std
-    # X_test = (X_test - mean) / std
+    std = std.reshape(len(std), 1)
+    stdMat = np.matmul(std, np.ones([1, 32]))
+    X_train = (X_train - mean) / std
+    X_test = (X_test - mean) / std
 
     if strtobool(args.eaNorm):
-        dataLink = dataName + '_COV.txt'   
-        if not os.path.exists(dataLink):
-            normR = getNormR(X_train)
-            normR = sqrtm(normR)
-            normR = np.linalg.inv(normR)
-            np.savetxt(dataLink, normR, fmt= '%.5f')
-        else:
-            normR = np.loadtxt(dataLink)
+        dataLink = dataName + '_COV.txt'
+        normR = getNormR(X_train)
+        normR = sqrtm(normR)
+        normR = np.linalg.inv(normR)
+        # print(normR)
+        # if not os.path.exists(dataLink):
+        #     normR = getNormR(X_train)
+        #     normR = sqrtm(normR)
+        #     normR = np.linalg.inv(normR)
+        #     np.savetxt(dataLink, normR, fmt= '%.5f')
+        # else:
+        #     normR = np.loadtxt(dataLink)
 
         tmp = []
         for ii in range(len(X_train)):
             Xnew = np.matmul(normR, X_train[ii])
             tmp.append(Xnew)
-        X_train = np.asarray(tmp)
         tmp = []
         for ii in range(len(X_test)):
             Xnew = np.matmul(normR, X_test[ii])
@@ -214,10 +223,35 @@ if __name__ == "__main__":
                 counter += 1
         print(counter * 100.0 / len(predicted))
     elif args.modelName == 'WLD':
-        # WLD model
+        import pywt
+        tmp = []
+        for ii in range(len(X_train)):
+            coeffs = pywt.wavedec2(X_train[ii].T, 'db4')
+            tmpCoe = []
+            print(type(coeffs[1]))
+            stop
+            for level in range(len(coeffs)):
+                print(ii, ' level')
+                cA, (cH, cV, cD) = coeffs[level]
+                stop
+                for xx in coeffs[level]:
+                    tmpCoe.append(xx)
+            for xx in tmpCoe:
+                print(xx.shape)
+            # Xnew = np.vstack(tmpCoe)
+            # print(Xnew.shape)
+            stop
+            tmp.append(Xnew)
+        tmp = []
+        for ii in range(len(X_test)):
+            Xnew = np.matmul(normR, X_test[ii])
+            tmp.append(Xnew)
+        X_test = np.asarray(tmp)
+
+        stop
         pass
     elif args.modelName == 'CNN':
-        setSeed(100)
+        setSeed(10000)
         n_samples, n_timestamp, n_channels = X_train.shape
         X_train = X_train.reshape((n_samples, n_timestamp, n_channels, 1))
         X_train = np.transpose(X_train, (0, 3, 1, 2))
@@ -236,7 +270,7 @@ if __name__ == "__main__":
         lr = 1e-4
         optimizer = optim.Adam(model.parameters(), lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
-        n_epochs = 11
+        n_epochs = 20
 
         _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader,
                                             validLoader, n_class=num_class, log_batch=len(trainLoader) // 30)
