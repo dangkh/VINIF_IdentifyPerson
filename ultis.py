@@ -160,9 +160,47 @@ class EEG_data(Dataset):
                  train=True):
 
         self.y = targets
-        mean = np.mean(datas, axis=3, keepdims=True)
-        std = np.std(datas, axis=3, keepdims=True)
-        self.X = (datas - mean) / std
+        # dataLink = './COV1.txt'
+        # if not os.path.exists(dataLink):
+        #     normR = getNormR(datas)
+        #     normR = sqrtm(normR)
+        #     normR = np.linalg.inv(normR)
+        #     np.savetxt(dataLink, normR, fmt= '%.5f')
+        # else:
+        #     normR = np.loadtxt(dataLink)
+
+        # tmp = []
+        # for ii in range(len(datas)):
+        #     Xnew = np.matmul(datas[ii], normR)
+        #     tmp.append(Xnew)
+
+        # newData = np.asarray(tmp)
+        # if not os.path.exists('./mean.npy'):
+        #     mean = np.mean(datas, axis=1, keepdims=False)
+        #     print(mean.shape)
+        #     meanmean = np.mean(mean,axis=0)
+        #     print(meanmean.shape)
+        #     meanMat = meanmean.reshape((1, 1, len(meanmean), 1))
+        #     np.save('./mean.npy', meanMat)
+        # else:
+        #     meanMat = np.load('./mean.npy')
+
+        # if not os.path.exists('./srd.npy'):
+        #     std = np.std(datas, axis=1, keepdims=False)
+        #     print(std.shape)
+        #     stdstd = np.mean(std,axis=0)
+        #     print(stdstd.shape)
+        #     stdMat = stdstd.reshape((1, 1, len(stdstd), 1))
+        #     np.save('./std.npy', stdMat)
+        # else:
+        #     stdMat = np.load('./std.npy')
+
+        meanMat = np.mean(datas, axis=1, keepdims=True)
+        stdMat = np.std(datas, axis=1, keepdims=True)
+        
+        # meanMat = np.mean(datas, axis=3, keepdims=True)
+        # stdMat = np.std(datas, axis=3, keepdims=True)
+        self.X = (datas - meanMat) / stdMat
         # self.X = np.asarray(datas)
         self.X = self.X.astype(np.float32) 
 
@@ -187,10 +225,8 @@ def TrainTestLoader(data, testSize = 0.1, split_augment = []):
     else:
         [X_train, y_train, X_test, y_test] = data
     batch_size = 32
-
     train_dataset = EEG_data(X_train, y_train)
     test_dataset = EEG_data(X_test, y_test)
-
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
         batch_size=batch_size, shuffle=True)
@@ -367,13 +403,13 @@ def augmentData(Xs, Ys, labels):
         X_source = Xs[np.where(Ys == label)]
         y_source = Ys[np.where(Ys == label)]
         datanoise, targetnoise = addNoise(X_source, y_source)
-        dataRemove, targetRemove = randomRemoveSample(X_source, y_source)
+        # dataRemove, targetRemove = randomRemoveSample(X_source, y_source)
         dataSwap, targetSwap = randomSwapSample(X_source, y_source)
         newXs.extend(datanoise)
-        newXs.extend(dataRemove)
+        # newXs.extend(dataRemove)
         newXs.extend(dataSwap)
         newYs.extend(targetnoise)
-        newYs.extend(targetRemove)
+        # newYs.extend(targetRemove)
         newYs.extend(targetSwap)
     newXs.extend(Xs)
     newYs.extend(Ys)
@@ -542,9 +578,9 @@ def normalize(mx):
 
 def getNormR(data):
     print(data.shape)
-    normR = np.zeros([128, 128])
+    normR = np.zeros([32, 32])
     for ii in range(len(data)):
-        covX = np.matmul(data[ii], data[ii].T)
+        covX = np.matmul(data[ii].T, data[ii])
         normR += covX
     normR = normR / len(data)
     return normR
@@ -792,7 +828,8 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
             # matAdj = torch.Tensor(Adj).to(device)
             # outputs = model(inputs, adj)
             outputs = model(inputs)
-            loss = criterion(outputs, labels)
+            # loss = criterion(outputs, labels)
+            loss = F.nll_loss(outputs, labels)
             loss.backward()
             optimizer.step()
 
@@ -818,3 +855,24 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
         acc = evaluateModel(model, plotConfusion=False, dataLoader=validLoader, n_class=n_class)
         accTrain = evaluateModel(model, plotConfusion=False, dataLoader=trainLoader, n_class=n_class)
     return model, llos, acc, accTrain
+
+
+def matmul_list(matrix_list, db=False):
+    if db:
+        for x in matrix_list:
+            print(x.shape)
+    number_matrix = len(matrix_list)
+    result = np.copy(matrix_list[0])
+    for i in range(1, number_matrix):
+        result = np.matmul(result, matrix_list[i])
+    return result
+
+def setting_rank(eigen_vector):
+    minCumSV = 0.99
+    current_sum = 0
+    sum_list = np.sum(eigen_vector)
+    for x in range(len(eigen_vector)):
+        current_sum += eigen_vector[x]
+        if current_sum > minCumSV * sum_list:
+            return x + 1
+    return len(eigen_vector)
