@@ -111,9 +111,9 @@ if __name__ == "__main__":
     X_train = (X_train - mean) / std
     X_test = (X_test - mean) / std
     meanMat = np.mean(X_train, axis=0, keepdims=False)
-    _, Sigma_mean, UmeanMat = np.linalg.svd(meanMat.T / np.sqrt(meanMat.T.shape[0] - 1), full_matrices=False)
-    UmeanMat = UmeanMat.T
-    ksmall = 50
+    tmpMat = np.matmul(meanMat.T, meanMat)
+    _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat / np.sqrt(tmpMat.shape[0] - 1), full_matrices=False)
+    # UmeanMat = UmeanMat.T
 
     if strtobool(args.eaNorm):
         dataLink = dataName + '_COV.txt'
@@ -133,13 +133,11 @@ if __name__ == "__main__":
             # Xnew = np.matmul(X_train[ii], normR)
             # tmp.append(Xnew)
             Xnew = np.copy(X_train[ii])
-            _, Sigma_Test, U_Test = np.linalg.svd(Xnew.T / np.sqrt(Xnew.T.shape[0] - 1), full_matrices=False)
-            U_Test = U_Test.T
-            U_Test = U_Test[:, :ksmall]
-            UmeanTmp = UmeanMat[:, :ksmall]
-            transformMatrix = np.matmul(U_Test.T, UmeanTmp)
-            Xnew = matmul_list([Xnew.T, UmeanTmp, transformMatrix, U_Test.T])
-            Xnew = Xnew.T
+            tmpMat = np.matmul(Xnew.T, Xnew)
+            _, Sigma_Test, U_Test = np.linalg.svd(tmpMat / np.sqrt(tmpMat.shape[0] - 1), full_matrices=True)
+            # U_Test = U_Test.T
+            transformMatrix = np.matmul(U_Test.T, UmeanMat)
+            Xnew = matmul_list([Xnew, U_Test, transformMatrix, UmeanMat.T])
             tmp.append(Xnew)
         X_train = np.asarray(tmp)
         normR = getNormR(X_train)
@@ -154,13 +152,11 @@ if __name__ == "__main__":
             # Xnew = np.matmul(X_test[ii], normR)
             # tmp.append(Xnew)
             Xnew = np.copy(X_test[ii])
-            _, Sigma_Test, U_Test = np.linalg.svd(Xnew.T / np.sqrt(Xnew.T.shape[0] - 1), full_matrices=False)
-            U_Test = U_Test.T
-            U_Test = U_Test[:, :ksmall]
-            UmeanTmp = UmeanMat[:, :ksmall]
-            transformMatrix = np.matmul(U_Test.T, UmeanTmp)
-            Xnew = matmul_list([Xnew.T, UmeanTmp, transformMatrix, U_Test.T])
-            Xnew = Xnew.T
+            tmpMat = np.matmul(Xnew.T, Xnew)
+            _, Sigma_Test, U_Test = np.linalg.svd(tmpMat / np.sqrt(tmpMat.shape[0] - 1), full_matrices=True)
+            # U_Test = U_Test.T
+            transformMatrix = np.matmul(U_Test.T, UmeanMat)
+            Xnew = matmul_list([Xnew, U_Test, transformMatrix, UmeanMat.T])
             Xnew = np.matmul(Xnew, normR)
             tmp.append(Xnew)
         X_test = np.asarray(tmp)
