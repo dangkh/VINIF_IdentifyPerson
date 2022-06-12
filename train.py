@@ -102,7 +102,7 @@ if __name__ == "__main__":
         X_f, y_f = getData_All(PreProDatas)
 
     listAcc = []
-    listSeed = [x*5+5 for x in range(10)]
+    listSeed = [x*500+15 for x in range(10)]
     for testingTime in range(10):
         X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state= listSeed[testingTime])
 
@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
             meanMat = np.mean(X_train, axis=0, keepdims=False)
             tmpMat = np.matmul(meanMat.T, meanMat)
-            _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat / np.sqrt(tmpMat.shape[0] - 1), full_matrices=False)
+            _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat / np.sqrt(tmpMat.shape[0] - 1), full_matrices=True)
 
             tmp = []
             for ii in range(len(X_train)):
@@ -167,7 +167,6 @@ if __name__ == "__main__":
                 Xnew = np.matmul(Xnew, normR)
                 tmp.append(Xnew)
             X_test = np.asarray(tmp)
-            stop
         elif args.eaNorm == 'EA':
             dataLink = dataName + '_COV_EA.txt'
             normR = getNormR(X_train)

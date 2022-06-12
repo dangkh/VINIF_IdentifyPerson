@@ -475,8 +475,8 @@ def evaluateModel(model, plotConfusion, dataLoader, n_class):
             # pred = model(xx, adj)
             pred = model(xx)
             res = torch.argmax(pred, 1)
-            # if torch.cuda.is_available():
-            #     res = res.cpu().detach()
+            if torch.cuda.is_available():
+                res = res.cpu().detach()
             preds.extend(res.numpy())
             for id, ypred in enumerate(res):
                 if ypred == yy[id].item():
