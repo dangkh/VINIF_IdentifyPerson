@@ -10,6 +10,7 @@ import json
 import mne
 import pandas as pd
 import sys
+from scipy.linalg import sqrtm
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -585,6 +586,8 @@ def getNormR(data):
         covX = np.matmul(data[ii].T, data[ii])
         normR += covX
     normR = normR / len(data)
+    normR = sqrtm(normR)
+    normR = np.linalg.inv(normR)
     return normR
 
 
