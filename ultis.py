@@ -195,11 +195,11 @@ class EEG_data(Dataset):
         # else:
         #     stdMat = np.load('./std.npy')
 
-        meanMat = np.mean(datas, axis=1, keepdims=True)
-        stdMat = np.std(datas, axis=1, keepdims=True)
+        # meanMat = np.mean(datas, axis=1, keepdims=True)
+        # stdMat = np.std(datas, axis=1, keepdims=True)
         
-        # meanMat = np.mean(datas, axis=3, keepdims=True)
-        # stdMat = np.std(datas, axis=3, keepdims=True)
+        meanMat = np.mean(datas, axis=3, keepdims=True)
+        stdMat = np.std(datas, axis=3, keepdims=True)
         self.X = (datas - meanMat) / stdMat
         # self.X = np.asarray(datas)
         self.X = self.X.astype(np.float32) 
@@ -464,6 +464,7 @@ def evaluateModel(model, plotConfusion, dataLoader, n_class):
     total = 0
     preds = []
     trueLabel = []
+    model.to(device)
     model.eval()
     for idx, data in enumerate(dataLoader):
         xx, yy = data
@@ -474,8 +475,8 @@ def evaluateModel(model, plotConfusion, dataLoader, n_class):
             # pred = model(xx, adj)
             pred = model(xx)
             res = torch.argmax(pred, 1)
-            if torch.cuda.is_available():
-                res = res.cpu()
+            # if torch.cuda.is_available():
+            #     res = res.cpu().detach()
             preds.extend(res.numpy())
             for id, ypred in enumerate(res):
                 if ypred == yy[id].item():
@@ -484,6 +485,7 @@ def evaluateModel(model, plotConfusion, dataLoader, n_class):
     if plotConfusion:
         plotCl = [str(x) for x in range(n_class)]
         plot_confusion_matrix(trueLabel, preds, classes=plotCl, normalize=True, title='Validation confusion matrix')
+    # model.to(device)
     return 100 * counter / total
 
 
@@ -828,8 +830,8 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
             # matAdj = torch.Tensor(Adj).to(device)
             # outputs = model(inputs, adj)
             outputs = model(inputs)
-            # loss = criterion(outputs, labels)
-            loss = F.nll_loss(outputs, labels)
+            loss = criterion(outputs, labels)
+            # loss = F.nll_loss(outputs, labels)
             loss.backward()
             optimizer.step()
 
