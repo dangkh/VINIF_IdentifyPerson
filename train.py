@@ -336,6 +336,7 @@ if __name__ == "__main__":
 
             break
         else:
+            stop
             print("Training at {} round".format(testingTime))
             X_train, y_train, X_test, y_test = getDataFuture(PreProDatas, info)
             acc = trainCore(X_train, X_test, y_train, y_test, info)
