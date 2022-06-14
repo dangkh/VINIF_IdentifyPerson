@@ -294,8 +294,16 @@ def getDataFuture(inputData, info):
     ids = np.unique(label)
     # extract by name
     ratio = 0.8
-    label = relabel(label, ratio, info)
-    return np.asarray(data), np.asarray(label)
+    train, test, keys = splitLabel(label, ratio, info)
+    X_train, X_test, y_train, y_test = [], [], [], []
+    for sampleIdx in range(len(data)):
+        if label[sampleIdx] in train:
+            X_train.append(data[sampleIdx])
+            y_train.append(keys[label[sampleIdx]])
+        else:
+            X_test.append(data[sampleIdx])
+            y_test.append(keys[label[sampleIdx]])
+    return np.asarray(X_train), np.asarray(y_train), np.asarray(X_test), np.asarray(y_test)
 
 
 def findSub(info):
@@ -306,18 +314,29 @@ def findSub(info):
     pass
 
 
-def relabel(label, ratio, info):
+def randomSelect(sub, numTesting):
+    train = sub[:-numTesting]
+    test = sub[-numTesting:]
+    return train, test
+
+
+def splitLabel(label, ratio, info):
     '''
-    return label in 1D array, where si*2 indicates sample for training
-    and si*2+1 indicates sample for testing. labels are radomly selected as given ratio
+    return 2 list of label, are radomly selected as given ratio
     '''
-    newLabel  =  []
+    labelKey  =  [0]*1000
+    totalTrain, totalTest = [], []
     listSub = findSub(info)
+    for idx in range(len(listSub)):
+        for X in listSub[idx]:
+            labelKey[X] = idx
     for sub in range(len(listSub)):
         numTesting = int(len(sub) * (1-ratio))
         # random select testing sample
-        pass
-    return newLabel
+        train, test = randomSelect(sub, numTesting)
+        totalTrain.extend(train)
+        totalTest.extend(test)
+    return totalTrain, totalTest, labelKey
 
 
 # get MI data all of it
