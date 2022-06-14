@@ -304,7 +304,9 @@ if __name__ == "__main__":
             'EA': str(args.eaNorm),
             'extractFixation': strtobool(args.extractFixation),
             'channelType': channelCombos[args.channelType],
-            'modelName': args.modelName
+            'modelName': args.modelName, 
+            'typeTest': typeTest,
+            'inputPath': args.input
         }
     if not os.path.exists(dataLink):        
         datas = extractData_byInfo(info)
@@ -331,8 +333,14 @@ if __name__ == "__main__":
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
                 print("Scenario {} with acc: {}".format(scenario, acc))
                 listAcc.append(acc)
+
+            break
         else:
-            pass
+            print("Training at {} round".format(testingTime))
+            X_train, y_train, X_test, y_test = getDataFuture(PreProDatas, info)
+            acc = trainCore(X_train, X_test, y_train, y_test, info)
+            print("Scenario {} with acc: {}".format(scenario, acc))
+            listAcc.append(acc)
 
     listAcc = np.asarray(listAcc)
     print(listAcc)

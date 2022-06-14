@@ -282,6 +282,43 @@ def getDataScenario(inputData, testIndex):
     X_train, y_train, X_test, y_test = trainTestSplit(data, label, test, 1)
     return np.asarray(X_train), y_train, np.asarray(X_test), y_test
 
+# split by session
+def getDataFuture(inputData, info):
+    data, label = [], []
+    for id, dataSub in enumerate(inputData):
+        for dataSample, _ in dataSub:
+            data.extend(dataSample)
+            label.extend([id]*len(dataSample))
+    data = np.asarray(data)
+    label = np.asarray(label)
+    ids = np.unique(label)
+    # extract by name
+    ratio = 0.8
+    label = relabel(label, ratio, info)
+    return np.asarray(data), np.asarray(label)
+
+
+def findSub(info):
+    '''
+    return 2D list, [[s1],[s2],...,[sn]]
+    where si contain [label1, label2, label3,...,labeln] 
+    '''
+    pass
+
+
+def relabel(label, ratio, info):
+    '''
+    return label in 1D array, where si*2 indicates sample for training
+    and si*2+1 indicates sample for testing. labels are radomly selected as given ratio
+    '''
+    newLabel  =  []
+    listSub = findSub(info)
+    for sub in range(len(listSub)):
+        numTesting = int(len(sub) * (1-ratio))
+        # random select testing sample
+        pass
+    return newLabel
+
 
 # get MI data all of it
 def getData_All(inputData):
