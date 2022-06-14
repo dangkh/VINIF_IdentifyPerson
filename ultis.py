@@ -293,7 +293,7 @@ def getDataFuture(inputData, info):
     label = np.asarray(label)
     ids = np.unique(label)
     # extract by name
-    ratio = 0.8
+    ratio = 0.8    
     train, test, keys = splitLabel(label, ratio, info)
     X_train, X_test, y_train, y_test = [], [], [], []
     for sampleIdx in range(len(data)):
@@ -311,12 +311,30 @@ def findSub(info):
     return 2D list, [[s1],[s2],...,[sn]]
     where si contain [label1, label2, label3,...,labeln] 
     '''
-    pass
+    listPaths = info['listPaths']
+    list_dir = []
+    for dir in listPaths:
+        if dir[-9:] == '.DS_Store':
+            continue
+        if not os.path.isdir(dir):
+            continue
+        tmp = dir.split('/')
+        list_dir.append(tmp[-1])
+    listSub = [[0]]
+    for ii in range(1, len(list_dir)):
+        if list_dir[ii][:-2] == list_dir[ii-1][:-2]:
+            listSub[-1].append(ii)
+        else:
+            listSub.append([ii])
+    return listSub
 
 
 def randomSelect(sub, numTesting):
-    train = sub[:-numTesting]
-    test = sub[-numTesting:]
+    tmp = sub
+    np.random.shuffle(tmp)
+
+    train = tmp[:-numTesting]
+    test = tmp[-numTesting:]
     return train, test
 
 
@@ -324,16 +342,17 @@ def splitLabel(label, ratio, info):
     '''
     return 2 list of label, are radomly selected as given ratio
     '''
-    labelKey  =  [0]*1000
+
+    labelKey  =  [0]*(len(np.unique(label))+1)
     totalTrain, totalTest = [], []
     listSub = findSub(info)
     for idx in range(len(listSub)):
         for X in listSub[idx]:
             labelKey[X] = idx
     for sub in range(len(listSub)):
-        numTesting = int(len(sub) * (1-ratio))
+        numTesting = max(int(len(listSub[sub]) * (1-ratio)), 1)
         # random select testing sample
-        train, test = randomSelect(sub, numTesting)
+        train, test = randomSelect(listSub[sub], numTesting)
         totalTrain.extend(train)
         totalTest.extend(test)
     return totalTrain, totalTest, labelKey
@@ -763,8 +782,11 @@ def EEGExtractor_byInfo(link, info):
         return [], []
     print(eeg_data_new.annotations)
     listEEG = []
+    compareArea = "Resting"
+    if info['thinking']:
+        compareArea = "Thinking"
     for annos in eeg_data_new.annotations:
-        if annos["description"] != 'Resting':
+        if annos["description"] != compareArea:
             continue
         start = annos["onset"] + 1.1
         y = annos["duration"]

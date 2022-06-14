@@ -221,9 +221,8 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         optimizer = optim.Adam(model.parameters(), lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
         n_epochs = 20
-
         _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader,
-                                            validLoader, n_class=num_class, log_batch=len(trainLoader) // 30)
+                                            validLoader, n_class=num_class, log_batch=max(len(trainLoader) // 30, 1))
         return acc
     elif info['modelName'] == 'SHALLOW':
         setSeed(10000)
@@ -267,6 +266,7 @@ if __name__ == "__main__":
     parser.add_argument('--windowSize', help='windowSize', default=120, type=int)
     parser.add_argument('--windowIHAR', help='windowIHAR', default=10, type=int)
     parser.add_argument('--extractFixation', help='type of extraction in eeg. Fixation: True. All: False', default='False')
+    parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
     parser.add_argument('--trainTestSeperate', help='train first then test. if not, train and test are splitted randomly', default='False')
     parser.add_argument('--trainTestSession', help='train test are splitted by session', default='True')
     args = parser.parse_args()
@@ -284,6 +284,7 @@ if __name__ == "__main__":
             if counter > numberObject:
                 break
 
+    listPaths = sorted(listPaths)
     tmpExtract = 'Fixation'
     if not strtobool(args.extractFixation):
         tmpExtract = 'All'
@@ -294,6 +295,8 @@ if __name__ == "__main__":
         typeTest = 'trainTestSession'
 
     dataName = './' + 'band_' + str(args.bandL) + '_' + str(args.bandR) + '_channelType_' + str(args.channelType) + '_' + typeTest + '_' + tmpExtract
+    if strtobool(args.thinking):
+        dataName += '_thinking'
     dataLink = dataName + '.npy'
     print(dataLink)
     info = {
@@ -306,7 +309,7 @@ if __name__ == "__main__":
             'channelType': channelCombos[args.channelType],
             'modelName': args.modelName, 
             'typeTest': typeTest,
-            'inputPath': args.input
+            'thinking': strtobool(args.thinking)
         }
     if not os.path.exists(dataLink):        
         datas = extractData_byInfo(info)
@@ -336,7 +339,6 @@ if __name__ == "__main__":
 
             break
         else:
-            stop
             print("Training at {} round".format(testingTime))
             X_train, y_train, X_test, y_test = getDataFuture(PreProDatas, info)
             acc = trainCore(X_train, X_test, y_train, y_test, info)
