@@ -1,0 +1,24 @@
+python train.py --windowSize 128 --modelName CNN --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm EA 
+python train.py --windowSize 128 --modelName CNN --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm 1EA 
+
+python train.py --windowSize 64 --modelName CNN --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm EA 
+python train.py --windowSize 64 --modelName CNN --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm 1EA 
+
+python train.py --windowSize 192 --modelName CNN --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm EA 
+python train.py --windowSize 192 --modelName CNN --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm 1EA 
+
+python train.py --windowSize 256 --modelName CNN --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm EA 
+python train.py --windowSize 256 --modelName CNN --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm 1EA 
+
+
+python train.py --windowSize 128 --modelName CNN_LSTM --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm EA 
+python train.py --windowSize 128 --modelName CNN_LSTM --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm 1EA 
+
+python train.py --windowSize 64 --modelName CNN_LSTM --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm EA 
+python train.py --windowSize 64 --modelName CNN_LSTM --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm 1EA 
+
+python train.py --windowSize 192 --modelName CNN_LSTM --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm EA 
+python train.py --windowSize 192 --modelName CNN_LSTM --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm 1EA 
+
+python train.py --windowSize 256 --modelName CNN_LSTM --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm EA 
+python train.py --windowSize 256 --modelName CNN_LSTM --output durationCNN.txt --bandL 13 --bandR 30 --extractFixation False --thinking True --trainTestSeperate True --trainTestSession False  --input C:\Users\hmi\Desktop\DataVIN --eaNorm 1EA 

@@ -29,7 +29,7 @@ channelCombos = [
 ]
 
 listMethods = ['PSD + SVM', 'IHAR + SVM']
-persons = [10, 9, 6]
+
 
 def SVM(X_train, y_train, X_test, y_test):
     clf = make_pipeline(StandardScaler(), SVC(kernel="linear", C=0.025))
@@ -148,16 +148,22 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         X_test = applyNorm(X_test, normR)
         
         meanMat = np.mean(X_train, axis=0, keepdims=False)
-        tmpMat = np.matmul(meanMat.T, meanMat)
+        tmpMat = np.matmul(meanMat, meanMat.T)
         _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat / np.sqrt(tmpMat.shape[0] - 1), full_matrices=True)
+        # print(Sigma_mean)
+        # stop
+
+        # numCov = 32
+        # UmeanMat = UmeanMat[:numCov]
 
         tmp = []
         for ii in range(len(X_train)):
             Xnew = np.copy(X_train[ii])
-            tmpMat = np.matmul(Xnew.T, Xnew)
+            tmpMat = np.matmul(Xnew, Xnew.T)
             _, Sigma_Test, U_Test = np.linalg.svd(tmpMat / np.sqrt(tmpMat.shape[0] - 1), full_matrices=True)
-            transformMatrix = np.matmul(U_Test.T, UmeanMat)
-            Xnew = matmul_list([Xnew, U_Test, transformMatrix, UmeanMat.T])
+            # U_Test = U_Test[:numCov]
+            transformMatrix = np.matmul( UmeanMat ,U_Test.T)
+            Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
             tmp.append(Xnew)
         X_train = np.asarray(tmp)
         normR = getNormR(X_train)
@@ -166,10 +172,11 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         tmp = []
         for ii in range(len(X_test)):
             Xnew = np.copy(X_test[ii])
-            tmpMat = np.matmul(Xnew.T, Xnew)
+            tmpMat = np.matmul(Xnew, Xnew.T)
             _, Sigma_Test, U_Test = np.linalg.svd(tmpMat / np.sqrt(tmpMat.shape[0] - 1), full_matrices=True)
-            transformMatrix = np.matmul(U_Test.T, UmeanMat)
-            Xnew = matmul_list([Xnew, U_Test, transformMatrix, UmeanMat.T])
+            # U_Test = U_Test[:numCov]
+            transformMatrix = np.matmul( UmeanMat ,U_Test.T)
+            Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
             Xnew = np.matmul(Xnew, normR)
             tmp.append(Xnew)
         X_test = np.asarray(tmp)
@@ -201,7 +208,6 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         pass
 
     elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
-        setSeed(10000)
         n_samples, n_timestamp, n_channels = X_train.shape
         X_train = X_train.reshape((n_samples, n_timestamp, n_channels, 1))
         X_train = np.transpose(X_train, (0, 3, 1, 2))
@@ -220,12 +226,11 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         lr = 3e-4
         optimizer = optim.Adam(model.parameters(), lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
-        n_epochs = 20
+        n_epochs = 10
         _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader,
                                             validLoader, n_class=num_class, log_batch=max(len(trainLoader) // 30, 1))
         return acc
     elif info['modelName'] == 'SHALLOW':
-        setSeed(10000)
         n_samples, n_timestamp, n_channels = X_train.shape
         X_train = X_train.reshape((n_samples, n_timestamp, n_channels, 1))
         X_train = np.transpose(X_train, (0, 2, 1, 3))
@@ -235,14 +240,13 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         X_test = np.transpose(X_test, (0, 2, 1, 3))
         trainLoader, validLoader = TrainTestLoader([X_train, y_train, X_test, y_test])
         num_class = len(np.unique(y_train))
-
         input_time_length = X_train.shape[2]
         in_chans = X_train.shape[3]
         model = EEGShallowClassifier(in_chans=32, n_classes=num_class, input_time_length=128, return_feature=False)
         print("Model architecture >>>", model)
         model.to(device)
         criterion = nn.CrossEntropyLoss()
-        lr = 3e-4
+        lr = 3e-3
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0.5 * 0.001)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
         n_epochs = 20
@@ -252,7 +256,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         return acc
     else:
         pass
-    return 
+    return
 
 
 if __name__ == "__main__":
@@ -263,17 +267,20 @@ if __name__ == "__main__":
     parser.add_argument('--bandR', help='band filter', default=50.0, type=float)
     parser.add_argument('--eaNorm', help='EA norm', default='False')
     parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=3, type=int)
-    parser.add_argument('--windowSize', help='windowSize', default=120, type=int)
+    parser.add_argument('--windowSize', help='windowSize', default=128, type=int)
     parser.add_argument('--windowIHAR', help='windowIHAR', default=10, type=int)
     parser.add_argument('--extractFixation', help='type of extraction in eeg. Fixation: True. All: False', default='False')
     parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
     parser.add_argument('--trainTestSeperate', help='train first then test. if not, train and test are splitted randomly', default='False')
     parser.add_argument('--trainTestSession', help='train test are splitted by session', default='True')
+    parser.add_argument('--output', help='train test are splitted by session', default='./result.txt')
     args = parser.parse_args()
     print(args)
-
+    '''
+    # python train.py --windowSize 128 --modelName PSD --bandL 0.1 --bandR 50 --extractFixation False --thinking False --trainTestSeperate False --trainTestSession False
+    '''
     listPaths = []
-    numberObject = 20
+    numberObject = 50
     counter = 0
 
     prePath = args.input
@@ -297,6 +304,9 @@ if __name__ == "__main__":
     dataName = './' + 'band_' + str(args.bandL) + '_' + str(args.bandR) + '_channelType_' + str(args.channelType) + '_' + typeTest + '_' + tmpExtract
     if strtobool(args.thinking):
         dataName += '_thinking'
+    dataRaw = dataName +'_RAW.npy'
+    # if int(args.windowSize) != 128:
+    dataName += f'_size{args.windowSize}'
     dataLink = dataName + '.npy'
     print(dataLink)
     info = {
@@ -311,21 +321,29 @@ if __name__ == "__main__":
             'typeTest': typeTest,
             'thinking': strtobool(args.thinking)
         }
-    if not os.path.exists(dataLink):        
-        datas = extractData_byInfo(info)
+    if not os.path.exists(dataLink):
+        if not os.path.exists(dataRaw):            
+            datas = extractData_byInfo(info)
+            np.save(dataRaw, datas)
+        else:
+            datas = np.load(dataRaw, allow_pickle=True)    
         print("Number of subjects in data: ", len(datas))
         PreProDatas = preprocessDataInfo(datas, info)
-        np.save(dataLink, PreProDatas)
+        # np.save(dataLink, PreProDatas)
     else:
         PreProDatas = np.load(dataLink, allow_pickle=True)
 
     listAcc = []
-    listSeed = [x*500+15 for x in range(10)]
-    for testingTime in range(10):
+    listSeed = [x*500+15 for x in range(50)]
+    numTest = 10
+    if typeTest == 'trainTestSession':
+        numTest = 1
+
+    for testingTime in range(numTest):
         if typeTest == 'trainTestRandom':
             print("Training at {} round".format(testingTime))
             X_f, y_f = getData_All(PreProDatas)
-            X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state= listSeed[testingTime])
+            X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state= listSeed[testingTime])            
             acc = trainCore(X_train, X_test, y_train, y_test, info)
             print(acc)
             listAcc.append(acc)
@@ -333,6 +351,8 @@ if __name__ == "__main__":
             print("Training at {} round".format(testingTime))
             for scenario in range(9):
                 X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, scenario)
+                print(X_train.shape)
+                stop
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
                 print("Scenario {} with acc: {}".format(scenario, acc))
                 listAcc.append(acc)
@@ -340,11 +360,20 @@ if __name__ == "__main__":
             break
         else:
             print("Training at {} round".format(testingTime))
+            setSeed(listSeed[testingTime])
             X_train, y_train, X_test, y_test = getDataFuture(PreProDatas, info)
+            stop
+            # X_train, y_train = augmentData(X_train, y_train, [3])
+            # analyzeTrainData(y_train)
             acc = trainCore(X_train, X_test, y_train, y_test, info)
-            print("Scenario {} with acc: {}".format(scenario, acc))
+            print(" acc: {}".format( acc))
             listAcc.append(acc)
 
     listAcc = np.asarray(listAcc)
-    print(listAcc)
-    print(np.mean(listAcc), np.max(listAcc) - np.mean(listAcc))
+    sourceFile = open(args.output, 'a')
+    print('*'*10, 'Result' ,'*'*10, file = sourceFile)
+    print(args, file = sourceFile)
+    print(listAcc, file = sourceFile)
+    print(np.mean(listAcc), np.max(listAcc) - np.mean(listAcc), file = sourceFile)
+    print('*'*10, 'End' ,'*'*10, file = sourceFile)
+    sourceFile.close()

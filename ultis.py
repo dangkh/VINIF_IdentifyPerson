@@ -11,6 +11,7 @@ import mne
 import pandas as pd
 import sys
 from scipy.linalg import sqrtm
+from sklearn.metrics import confusion_matrix
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -293,7 +294,7 @@ def getDataFuture(inputData, info):
     label = np.asarray(label)
     ids = np.unique(label)
     # extract by name
-    ratio = 0.8    
+    ratio = 0.1
     train, test, keys = splitLabel(label, ratio, info)
     X_train, X_test, y_train, y_test = [], [], [], []
     for sampleIdx in range(len(data)):
@@ -320,9 +321,10 @@ def findSub(info):
             continue
         tmp = dir.split('/')
         list_dir.append(tmp[-1])
+
     listSub = [[0]]
     for ii in range(1, len(list_dir)):
-        if list_dir[ii][:-2] == list_dir[ii-1][:-2]:
+        if list_dir[ii][:7] == list_dir[ii-1][:7]:
             listSub[-1].append(ii)
         else:
             listSub.append([ii])
@@ -335,6 +337,11 @@ def randomSelect(sub, numTesting):
 
     train = tmp[:-numTesting]
     test = tmp[-numTesting:]
+    print("*"*10,"info","*"*10)
+
+    print(train)
+    print(test)
+    print("*"*10,"end","*"*10)
     return train, test
 
 
@@ -346,11 +353,13 @@ def splitLabel(label, ratio, info):
     labelKey  =  [0]*(len(np.unique(label))+1)
     totalTrain, totalTest = [], []
     listSub = findSub(info)
+
     for idx in range(len(listSub)):
         for X in listSub[idx]:
             labelKey[X] = idx
     for sub in range(len(listSub)):
-        numTesting = max(int(len(listSub[sub]) * (1-ratio)), 1)
+        # numTesting = max(int(len(listSub[sub]) * ratio), 1)
+        numTesting = 1
         # random select testing sample
         train, test = randomSelect(listSub[sub], numTesting)
         totalTrain.extend(train)
@@ -535,6 +544,61 @@ def chooseModel(modelName, num_class, input_size=None):
     return model
 
 
+def plot_confusion_matrix(y_true, y_pred, classes,
+                            normalize=False,
+                            title=None,
+                            cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if not title:
+        if normalize:
+            title = 'Normalized confusion matrix'
+        else:
+            title = 'Confusion matrix, without normalization'
+
+    # Compute confusion matrix
+    cm = confusion_matrix(y_true, y_pred)
+    print(cm)
+#     # Only use the labels that appear in the data
+#     classes = classes[unique_labels(y_true, y_pred)]
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+
+
+    # fig, ax = plt.subplots()
+    # im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    # ax.figure.colorbar(im, ax=ax)
+    # # We want to show all ticks...
+    # ax.set(xticks=np.arange(cm.shape[1]),
+    #     yticks=np.arange(cm.shape[0]),
+    #     # ... and label them with the respective list entries
+    #     xticklabels=classes, yticklabels=classes,
+    #     title=title,
+    #     ylabel='True label',
+    #     xlabel='Predicted label')
+
+    # # Rotate the tick labels and set their alignment.
+    # plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+    #     rotation_mode="anchor")
+
+    # # Loop over data dimensions and create text annotations.
+    # fmt = '.2f' if normalize else 'd'
+    # thresh = cm.max() / 2.
+    # for i in range(cm.shape[0]):
+    #     for j in range(cm.shape[1]):
+    #         ax.text(j, i, format(cm[i, j], fmt),
+    #                 ha="center", va="center",
+    #                 color="white" if cm[i, j] > thresh else "black")
+    # fig.tight_layout()
+    # plt.show()
+    # return ax
+
 def evaluateModel(model, plotConfusion, dataLoader, n_class):
     counter = 0
     total = 0
@@ -717,7 +781,7 @@ def ET2Fixation(etFile):
 
 def extractSub_byInfo(path, info):
     samples = os.listdir(path)
-    print(samples)
+    # print(samples)
     data = []
     for idx, sample in enumerate(samples):
         samplePath = path + '/' + sample + '/'
@@ -774,9 +838,9 @@ def EEGExtractor_byInfo(link, info):
     eeg_data_new = eeg_raw.copy().load_data().filter(l_freq= float(info['bandL']), h_freq= float(info['bandR']))
     eegTs = pd.read_csv(link + '/EEGTimeStamp.txt', names=['TimeStamp'])
     eegTs = eegTs.sort_values(by=['TimeStamp'])
-    print("Time in EEGTS by Frame number: ", len(eegTs) / int(info['windowSize']), "*" * 20)
+    print("Time in EEGTS by Frame number: ", len(eegTs) / 128, "*" * 20)
     print("Time in EEGTS by TS: ", eegTs["TimeStamp"].iloc[-1] - eegTs["TimeStamp"].iloc[0], "*" * 20)
-    timeInTs = len(eegTs) / int(info['windowSize'])
+    timeInTs = len(eegTs) / 128
     timeInFrame = eegTs["TimeStamp"].iloc[-1] - eegTs["TimeStamp"].iloc[0]
     if abs(timeInTs - timeInFrame) > 2:
         return [], []
@@ -790,6 +854,8 @@ def EEGExtractor_byInfo(link, info):
             continue
         start = annos["onset"] + 1.1
         y = annos["duration"]
+        if y < 1.1:
+            continue
         stop = start + y - 1.1
         tmp = eeg_data_new.copy().crop(start, stop)
         matrix = tmp.get_data(picks = info['channelType']).T
@@ -806,9 +872,9 @@ def EEGByFixation_byInfo(link, listFixation, info):
     eeg_data_new = eeg_raw.copy().load_data().filter(l_freq= float(info['bandL']), h_freq= float(info['bandR']))
     eegTs = pd.read_csv(link + '/EEGTimeStamp.txt', names=['TimeStamp'])
     eegTs = eegTs.sort_values(by=['TimeStamp'])
-    print("Time in EEGTS by Frame number: ", len(eegTs) / int(info['windowSize']), "*" * 20)
+    print("Time in EEGTS by Frame number: ", len(eegTs) / 128, "*" * 20)
     print("Time in EEGTS by TS: ", eegTs["TimeStamp"].iloc[-1] - eegTs["TimeStamp"].iloc[0], "*" * 20)
-    timeInTs = len(eegTs) / int(info['windowSize'])
+    timeInTs = len(eegTs) / 128
     timeInFrame = eegTs["TimeStamp"].iloc[-1] - eegTs["TimeStamp"].iloc[0]
     if abs(timeInTs - timeInFrame) > 2:
         return [], []
@@ -823,9 +889,9 @@ def EEGByFixation_byInfo(link, listFixation, info):
             continue
 
         # get EEG frame by index
-        start = [eegTs[eegTs['TimeStamp'] >= startFix].index[0] /  int(info['windowSize']) + 0.01]
+        start = [eegTs[eegTs['TimeStamp'] >= startFix].index[0] /  128 + 0.01]
         # print(eegTs[eegTs['TimeStamp'] <= stopFix])
-        stop = [eegTs[eegTs['TimeStamp'] <= stopFix].index[-1] /  int(info['windowSize'])]
+        stop = [eegTs[eegTs['TimeStamp'] <= stopFix].index[-1] /  128]
         # print(start," " ,stop, " ", stop - start )
 
         diffTs = (stopFix - startFix) - (stop[0] - start[0])
@@ -836,7 +902,7 @@ def EEGByFixation_byInfo(link, listFixation, info):
                 tmp = eeg_data_new.copy().crop(start[0], stop[0])
                 matrix = tmp.get_data(picks = info['channelType']).T
                 numFrame = matrix.shape[0]
-                numFrame2time = numFrame /  int(info['windowSize'])
+                numFrame2time = numFrame /  128
                 diffEEGvET = (stopFix - startFix) - numFrame2time
                 diffEEGvTs = (stop[0] - start[0]) - numFrame2time
                 # print(diffEEGvET, diffEEGvTs)
@@ -911,7 +977,9 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
             # matAdj = torch.Tensor(Adj).to(device)
             # outputs = model(inputs, adj)
             outputs = model(inputs)
+            # model CNN LSTM
             loss = criterion(outputs, labels)
+            # model Shallow
             # loss = F.nll_loss(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -935,7 +1003,7 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
         scheduler.step()
         sys.stdout.write("\r[{0}] {1}% loss: {2: 3f}".format('#' * 50, 100, mean_loss))
         sys.stdout.flush()
-        acc = evaluateModel(model, plotConfusion=False, dataLoader=validLoader, n_class=n_class)
+        acc = evaluateModel(model, plotConfusion=True, dataLoader=validLoader, n_class=n_class)
         accTrain = evaluateModel(model, plotConfusion=False, dataLoader=trainLoader, n_class=n_class)
     return model, llos, acc, accTrain
 
