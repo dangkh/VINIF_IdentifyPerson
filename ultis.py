@@ -79,7 +79,7 @@ def preprocessDataInfo(inputData, info):
             # break
         result.append(preprocSub)
     """
-    result comprises [[dataSub1],[dataSub2]...]
+    result comprises [dataSub1,dataSub2...]
     dataSubx comprises [[data, scenarioID], [data, scenarioID]]
     """
     return result
@@ -162,46 +162,14 @@ class EEG_data(Dataset):
                  train=True):
 
         self.y = targets
-        # dataLink = './COV1.txt'
-        # if not os.path.exists(dataLink):
-        #     normR = getNormR(datas)
-        #     normR = sqrtm(normR)
-        #     normR = np.linalg.inv(normR)
-        #     np.savetxt(dataLink, normR, fmt= '%.5f')
-        # else:
-        #     normR = np.loadtxt(dataLink)
-
-        # tmp = []
-        # for ii in range(len(datas)):
-        #     Xnew = np.matmul(datas[ii], normR)
-        #     tmp.append(Xnew)
-
-        # newData = np.asarray(tmp)
-        # if not os.path.exists('./mean.npy'):
-        #     mean = np.mean(datas, axis=1, keepdims=False)
-        #     print(mean.shape)
-        #     meanmean = np.mean(mean,axis=0)
-        #     print(meanmean.shape)
-        #     meanMat = meanmean.reshape((1, 1, len(meanmean), 1))
-        #     np.save('./mean.npy', meanMat)
-        # else:
-        #     meanMat = np.load('./mean.npy')
-
-        # if not os.path.exists('./srd.npy'):
-        #     std = np.std(datas, axis=1, keepdims=False)
-        #     print(std.shape)
-        #     stdstd = np.mean(std,axis=0)
-        #     print(stdstd.shape)
-        #     stdMat = stdstd.reshape((1, 1, len(stdstd), 1))
-        #     np.save('./std.npy', stdMat)
-        # else:
-        #     stdMat = np.load('./std.npy')
-
+        # for SHALLOW
         # meanMat = np.mean(datas, axis=1, keepdims=True)
         # stdMat = np.std(datas, axis=1, keepdims=True)
         
+        # for Normal
         meanMat = np.mean(datas, axis=3, keepdims=True)
         stdMat = np.std(datas, axis=3, keepdims=True)
+        
         self.X = (datas - meanMat) / stdMat
         # self.X = np.asarray(datas)
         self.X = self.X.astype(np.float32) 
@@ -718,9 +686,9 @@ def normalize(mx):
     mx = r_mat_inv.dot(mx)
     return mx
 
-def getNormR(data):
+def getNormR(data, shapeIn = 32):
     print(data.shape)
-    normR = np.zeros([32, 32])
+    normR = np.zeros([shapeIn, shapeIn])
     for ii in range(len(data)):
         covX = np.matmul(data[ii].T, data[ii])
         normR += covX
@@ -1019,7 +987,7 @@ def matmul_list(matrix_list, db=False):
     return result
 
 def setting_rank(eigen_vector):
-    minCumSV = 0.99
+    minCumSV = 0.9
     current_sum = 0
     sum_list = np.sum(eigen_vector)
     for x in range(len(eigen_vector)):

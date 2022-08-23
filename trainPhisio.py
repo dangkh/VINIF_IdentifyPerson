@@ -19,6 +19,10 @@ from ultis import *
 from nets import *
 import random
 
+
+from moabb.datasets import PhysionetMI
+from moabb.paradigms import MotorImagery
+
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 channelCombos = [
@@ -130,6 +134,37 @@ def setSeed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
+def extractSub(ids, X_src2, m_src2):
+    tmpX = X_src2[m_src2['subject'] == ids+1]
+    tmpM = m_src2[m_src2['subject'] == ids+1]
+    data = []
+    cur = -1
+    tmp = []
+    for ii in range(len(tmpM)):
+        scenarioID = ord(tmpM.iloc[ii]['run'][-1]) - ord('0') 
+        if cur != scenarioID and len(tmp) > 0:
+            cur = scenarioID
+            data.append([scenarioID,tmp, ''])
+            tmp = []
+        tmp.append(tmpX[ii].T)
+    if len(tmp) > 0:
+        data.append([ scenarioID, tmp, ''])
+    return data
+
+
+def extractDataPhisio_byInfo(info):
+    fmin, fmax = info['bandL'], info['bandR']
+    sfreq = 128.
+    ds_src2 = PhysionetMI()
+    numSub = 50
+    datas = []
+    prgm_4classes = MotorImagery(n_classes=4, resample=sfreq, fmin=fmin, fmax=fmax)
+    X_src2, label_src2, m_src2 = prgm_4classes.get_data(dataset=ds_src2, subjects=[x+1 for x in range(numSub)])
+    for ii in range(numSub):
+        tmp = extractSub(ii, X_src2, m_src2)
+        datas.append(tmp)
+    return datas
+
 
 def trainCore(X_train, X_test, y_train, y_test, info):
     mean = np.mean(X_train, axis=0, keepdims=True)
@@ -192,14 +227,14 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         X_test = np.asarray(tmp)
         # X_test = applyNorm(X_test, normR)
 
-        normR = getNormR(X_train)
+        normR = getNormR(X_train, 64)
 
         X_train = applyNorm(X_train, normR)
         X_test = applyNorm(X_test, normR)
 
     elif args.eaNorm == 'EA':
         dataLink = dataName + '_COV_EA.txt'
-        normR = getNormR(X_train)
+        normR = getNormR(X_train, 64)
         tmp = []
         for ii in range(len(X_train)):
             Xnew = np.matmul(X_train[ii], normR)
@@ -239,10 +274,10 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         print("Model architecture >>>", model)
         model.to(device)
         criterion = nn.CrossEntropyLoss()
-        lr = 3e-4
+        lr = 1e-3
         optimizer = optim.Adam(model.parameters(), lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
-        n_epochs = 10
+        n_epochs = 20
         _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader,
                                             validLoader, n_class=num_class, log_batch=max(len(trainLoader) // 30, 1))
         return acc
@@ -277,7 +312,6 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train')
-    parser.add_argument('--input', help='input data dir')
     parser.add_argument('--modelName', help='name of model : {}'.format(listMethods))
     parser.add_argument('--bandL', help='band filter', default=4.0, type=float)
     parser.add_argument('--bandR', help='band filter', default=50.0, type=float)
@@ -285,39 +319,19 @@ if __name__ == "__main__":
     parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=3, type=int)
     parser.add_argument('--windowSize', help='windowSize', default=128, type=int)
     parser.add_argument('--windowIHAR', help='windowIHAR', default=10, type=int)
-    parser.add_argument('--extractFixation', help='type of extraction in eeg. Fixation: True. All: False', default='False')
     parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
     parser.add_argument('--trainTestSeperate', help='train first then test. if not, train and test are splitted randomly', default='False')
-    parser.add_argument('--trainTestSession', help='train test are splitted by session', default='True')
     parser.add_argument('--output', help='train test are splitted by session', default='./result.txt')
     args = parser.parse_args()
     print(args)
     '''
-    # python train.py --windowSize 128 --modelName PSD --bandL 0.1 --bandR 50 --extractFixation False --thinking False --trainTestSeperate False --trainTestSession False
+    # python trainPhisio.py  --modelName IHAR --output ./res/restingHMI.txt --bandL 13 --bandR 30 --thinking False --trainTestSeperate False --windowSize 128  --eaNorm DEA
     '''
-    listPaths = []
-    numberObject = 10
-    counter = 0
-
-    prePath = args.input
-    for x in os.listdir(prePath):
-        if x != "BN001" and x != "K317" and x != "BN002" and x != "K299" and x != "K305":
-            listPaths.append(prePath + '/' + x)
-            counter += 1
-            if counter > numberObject:
-                break
-
-    listPaths = sorted(listPaths)
-    tmpExtract = 'Fixation'
-    if not strtobool(args.extractFixation):
-        tmpExtract = 'All'
     typeTest = 'trainTestRandom'
     if strtobool(args.trainTestSeperate):
         typeTest = 'trainTestSeperate'
-    if strtobool(args.trainTestSession) and strtobool(args.trainTestSeperate):
-        typeTest = 'trainTestSession'
 
-    dataName = './' + 'band_' + str(args.bandL) + '_' + str(args.bandR) + '_channelType_' + str(args.channelType) + '_' + typeTest + '_' + tmpExtract
+    dataName = f'./PHISYO_band_{str(args.bandL)}_{str(args.bandR)}_channelType_{str(args.channelType)}_{typeTest}'
     if strtobool(args.thinking):
         dataName += '_thinking'
     dataRaw = dataName +'_RAW.npy'
@@ -326,16 +340,12 @@ if __name__ == "__main__":
     # dataName += f'_size{args.windowSize}'
     # normal
     dataLink = dataName + '.npy'
-    # test
-    # dataLink = 'test.npy'
     print(dataLink)
     info = {
             'bandL': args.bandL,
             'bandR': args.bandR,
             'windowSize': args.windowSize,
-            'listPaths': listPaths,
             'EA': str(args.eaNorm),
-            'extractFixation': strtobool(args.extractFixation),
             'channelType': channelCombos[args.channelType],
             'modelName': args.modelName, 
             'typeTest': typeTest,
@@ -343,8 +353,7 @@ if __name__ == "__main__":
         }
     if not os.path.exists(dataLink):
         # normal
-        datas = extractData_byInfo(info)
-
+        datas = extractDataPhisio_byInfo(info)
         # vary window size
         # if not os.path.exists(dataRaw):            
         #     datas = extractData_byInfo(info)
@@ -360,8 +369,6 @@ if __name__ == "__main__":
     listAcc = []
     listSeed = [x*500+15 for x in range(50)]
     numTest = 10
-    if typeTest == 'trainTestSession':
-        numTest = 1
 
     for testingTime in range(numTest):
         if typeTest == 'trainTestRandom':
