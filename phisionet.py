@@ -1,6 +1,4 @@
-from braindecode.util import set_random_seeds, np_to_var, var_to_np
-import matplotlib.pyplot as plt
-from moabb.datasets import PhysionetMI, BNCI2014001
+from moabb.datasets import PhysionetMI
 from moabb.paradigms import MotorImagery
 from numpy.random import RandomState
 import pickle

@@ -1,7 +1,6 @@
 import numpy as np
 import argparse
 import os
-from ultis import *
 from distutils.util import strtobool
 from sklearn import svm
 from sklearn.svm import SVC
@@ -15,13 +14,19 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 import torch
 import sys
-from ultis import *
-from nets import *
+from util.nets import *
 import random
+
+
+from util.dataUtil import *
+from util.modelUtil import *
+from util.preproc import *
 
 
 from moabb.datasets import PhysionetMI
 from moabb.paradigms import MotorImagery
+
+
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
@@ -32,49 +37,7 @@ channelCombos = [
      'FT10', 'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2']
 ]
 
-listMethods = ['PSD + SVM', 'IHAR + SVM']
-
-
-def SVM(X_train, y_train, X_test, y_test):
-    clf = make_pipeline(StandardScaler(), SVC(kernel="linear", C=0.025))
-    clf.fit(X_train, y_train)
-    predicted = clf.predict(X_test)
-    predicted = np.asarray(predicted)
-    counter = 0
-    for i in range(len(predicted)):
-        if predicted[i] == y_test[i]:
-            counter += 1
-    acc = counter * 100.0 / len(predicted)
-    return acc
-
-
-def PSD(X_train, y_train, X_test, y_test):
-    tmp = []
-    for xxx in X_train:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_train = np.vstack(tmp)
-
-    tmp = []
-    for xxx in X_test:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_test = np.vstack(tmp)
-    return SVM(X_train, y_train, X_test, y_test)
-
-
-def IHAR(X_train, y_train, X_test, y_test):
-    listChns = ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 
+listChns = ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 
             'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 
             'Fp1', 'Fpz', 'Fp2', 
             'AF7', 'AF3', 'AFz', 'AF4', 'AF8', 
@@ -82,65 +45,9 @@ def IHAR(X_train, y_train, X_test, y_test):
             'T7', 'T8', 'T9', 'T10', 'TP7', 'TP8', 
             'P7', 'P5', 'P3', 'P1', 'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO3', 'POz', 'PO4', 'PO8', 
             'O1', 'Oz', 'O2', 'Iz']
-    electrodeIHAR = [['Fp1', 'F7', 'F3', 'FC5', 'T7', 'P7', 'O1'], ['Fp2', 'F8', 'F4', 'FC6', 'T8', 'P8', 'O2']]
-    numNode = len(electrodeIHAR[0])
-    electrodeIndex = []
-    for electrodes in electrodeIHAR:
-        electrodeIndex.append([listChns.index(x) for x in electrodes])
-    tmp = []
-    for xxx in X_train:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = MA(newX, args.windowIHAR)
-        IharTrain = []
-        for ii in range(numNode):
-            left = newX[electrodeIndex[0][ii]]
-            right = newX[electrodeIndex[1][ii]]
-            ihar = left / right
-            IharTrain.append(ihar)
-        # IharTrain.append(newX)
-        newX = np.vstack([np.vstack(IharTrain), newX])
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_train = np.vstack(tmp)
-
-    tmp = []
-    for xxx in X_test:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = MA(newX, args.windowIHAR)
-        IharTrain = []
-        for ii in range(numNode):
-            left = newX[electrodeIndex[0][ii]]
-            right = newX[electrodeIndex[1][ii]]
-            ihar = left / right
-            IharTrain.append(ihar)
-        # IharTrain.append(newX)
-        newX = np.vstack([np.vstack(IharTrain), newX])
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_test = np.vstack(tmp)    
-    return SVM(X_train, y_train, X_test, y_test)
+listMethods = ['PSD + SVM', 'IHAR + SVM']
 
 
-def applyNorm(X_train, normMat):
-    tmp = []
-    for ii in range(len(X_train)):
-        Xnew = np.matmul(X_train[ii], normMat)
-        tmp.append(Xnew)
-    return np.asarray(tmp)
-
-def setSeed(seed):
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
 
 def extractSub(ids, X_src2, m_src2):
     tmpX = X_src2[m_src2['subject'] == ids+1]
@@ -182,28 +89,16 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 
     if args.eaNorm == 'DEA':
         dataLink = dataName + '_COV_DEA.txt'
-        # normR = getNormR(X_train)
-
-        # X_train = applyNorm(X_train, normR)
-        # X_test = applyNorm(X_test, normR)
         tmp = []
         for label in np.unique(y_train):
             tmplist = X_train[np.where(y_train == label)]
             np.random.shuffle(tmplist)
             tmp.append(np.mean( tmplist, axis = 0))
         
-        # v1
-
         allMat = np.hstack(tmp)
         tmpMat = np.matmul(allMat, allMat.T)
         _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
         UmeanMat = UmeanMat.T
-        # print(np.sum(np.abs(tmpMat - matmul_list([UmeanMat, Sigma_mean * Sigma_mean, UmeanMat.T]))))
-        # print(Sigma_mean)
-        # stop
-        numCov = setting_rank(Sigma_mean)
-        # # numCov = 100
-        # UmeanMat = UmeanMat[:numCov]
 
         tmp = []
         for ii in range(len(X_train)):
@@ -212,14 +107,11 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 
             _, Sigma_Test, U_Test = np.linalg.svd(tmpMat , full_matrices=False)
             U_Test = U_Test.T
-            # U_Test = U_Test[:numCov]
             transformMatrix = np.matmul( U_Test, UmeanMat.T)
             Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
             tmp.append(Xnew)
         
         X_train = np.asarray(tmp)
-        # normR = getNormR(X_train)
-        # X_train = applyNorm(X_train, normR)
 
         tmp = []
         for ii in range(len(X_test)):
@@ -228,12 +120,10 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 
             _, Sigma_Test, U_Test = np.linalg.svd(tmpMat , full_matrices=False)
             U_Test = U_Test.T
-            # U_Test = U_Test[:numCov]
             transformMatrix = np.matmul( U_Test, UmeanMat.T)
             Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
             tmp.append(Xnew)
         X_test = np.asarray(tmp)
-        # X_test = applyNorm(X_test, normR)
 
         normR = getNormR(X_train, 64)
 
@@ -255,13 +145,11 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         X_test = np.asarray(tmp)
 
     if args.modelName == 'PSD':
-        # model PSD + SVM
         return PSD(X_train, y_train, X_test, y_test)
 
         
     elif args.modelName == 'IHAR':
-        # model IHAR + SVM
-        return IHAR(X_train, y_train, X_test, y_test)           
+        return IHAR(X_train, y_train, X_test, y_test, listChns)           
     elif args.modelName == 'WLD':
         return -1
         pass
@@ -293,7 +181,6 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         n_samples, n_timestamp, n_channels = X_train.shape
         X_train = X_train.reshape((n_samples, n_timestamp, n_channels, 1))
         X_train = np.transpose(X_train, (0, 2, 1, 3))
-        # X_train, y_train = augmentData(X_train, y_train, np.unique(y_train))
         n_samples, n_timestamp, n_channels = X_test.shape
         X_test = X_test.reshape((n_samples, n_timestamp, n_channels, 1))
         X_test = np.transpose(X_test, (0, 2, 1, 3))
