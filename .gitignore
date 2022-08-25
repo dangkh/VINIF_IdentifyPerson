@@ -1,0 +1,6 @@
+*.txt
+*.npy
+*.bat
+*.pyc
+\__pycache__\*
+*.bat
