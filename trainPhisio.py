@@ -71,7 +71,7 @@ def extractDataPhisio_byInfo(info):
     fmin, fmax = info['bandL'], info['bandR']
     sfreq = 128.
     ds_src2 = PhysionetMI()
-    numSub = 50
+    numSub = 5
     datas = []
     prgm_4classes = MotorImagery(n_classes=4, resample=sfreq, fmin=fmin, fmax=fmax)
     X_src2, label_src2, m_src2 = prgm_4classes.get_data(dataset=ds_src2, subjects=[x+1 for x in range(numSub)])
@@ -173,7 +173,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         lr = 3e-4
         optimizer = optim.Adam(model.parameters(), lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
-        n_epochs = 10
+        n_epochs = 1
         _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader,
                                             validLoader, n_class=num_class, log_batch=max(len(trainLoader) // 30, 1))
         return acc
@@ -219,9 +219,6 @@ if __name__ == "__main__":
     parser.add_argument('--output', help='train test are splitted by session', default='./result.txt')
     args = parser.parse_args()
     print(args)
-    '''
-    # python trainPhisio.py  --modelName IHAR --output ./res/restingHMI.txt --bandL 13 --bandR 30 --thinking False --trainTestSeperate False --windowSize 128  --eaNorm DEA
-    '''
     typeTest = 'trainTestRandom'
     if strtobool(args.trainTestSeperate):
         typeTest = 'trainTestSeperate'
@@ -263,7 +260,7 @@ if __name__ == "__main__":
 
     listAcc = []
     listSeed = [x*500+15 for x in range(50)]
-    numTest = 10
+    numTest = 1
 
     for testingTime in range(numTest):
         if typeTest == 'trainTestRandom':
@@ -282,18 +279,17 @@ if __name__ == "__main__":
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
                 print("Scenario {} with acc: {}".format(scenario, acc))
                 listAcc.append(acc)
-
-            break
-        else:
-            print("Training at {} round".format(testingTime))
-            setSeed(listSeed[testingTime])
-            X_train, y_train, X_test, y_test = getDataFuture(PreProDatas, info)
-            stop
-            # X_train, y_train = augmentData(X_train, y_train, [3])
-            # analyzeTrainData(y_train)
-            acc = trainCore(X_train, X_test, y_train, y_test, info)
-            print(" acc: {}".format( acc))
-            listAcc.append(acc)
+                break
+        # else:
+        #     print("Training at {} round".format(testingTime))
+        #     setSeed(listSeed[testingTime])
+        #     X_train, y_train, X_test, y_test = getDataFuture(PreProDatas, info)
+        #     stop
+        #     # X_train, y_train = augmentData(X_train, y_train, [3])
+        #     # analyzeTrainData(y_train)
+        #     acc = trainCore(X_train, X_test, y_train, y_test, info)
+        #     print(" acc: {}".format( acc))
+        #     listAcc.append(acc)
 
     listAcc = np.asarray(listAcc)
     sourceFile = open(args.output, 'a')

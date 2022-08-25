@@ -2,12 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import mne
 import math
-from sklearn import svm, datasets
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 from sklearn.utils.multiclass import unique_labels
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.datasets import make_classification
 from mne.filter import filter_data
-
+from util.modelUtil import *
 import pickle
 import os
 import sys
