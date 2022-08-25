@@ -9,7 +9,6 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import make_classification
 from mne.filter import filter_data
-from util.modelUtil import *
 import pickle
 import os
 import sys
@@ -265,73 +264,3 @@ def setSeed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-def PSD(X_train, y_train, X_test, y_test):
-    tmp = []
-    for xxx in X_train:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_train = np.vstack(tmp)
-
-    tmp = []
-    for xxx in X_test:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_test = np.vstack(tmp)
-    return SVM(X_train, y_train, X_test, y_test)
-
-
-def IHAR(X_train, y_train, X_test, y_test, listChns):
-    
-    electrodeIHAR = [['Fp1', 'F7', 'F3', 'FC5', 'T7', 'P7', 'O1'], ['Fp2', 'F8', 'F4', 'FC6', 'T8', 'P8', 'O2']]
-    numNode = len(electrodeIHAR[0])
-    electrodeIndex = []
-    for electrodes in electrodeIHAR:
-        electrodeIndex.append([listChns.index(x) for x in electrodes])
-    tmp = []
-    for xxx in X_train:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = MA(newX, args.windowIHAR)
-        IharTrain = []
-        for ii in range(numNode):
-            left = newX[electrodeIndex[0][ii]]
-            right = newX[electrodeIndex[1][ii]]
-            ihar = left / right
-            IharTrain.append(ihar)
-        newX = np.vstack([np.vstack(IharTrain), newX])
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_train = np.vstack(tmp)
-
-    tmp = []
-    for xxx in X_test:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = MA(newX, args.windowIHAR)
-        IharTrain = []
-        for ii in range(numNode):
-            left = newX[electrodeIndex[0][ii]]
-            right = newX[electrodeIndex[1][ii]]
-            ihar = left / right
-            IharTrain.append(ihar)
-        newX = np.vstack([np.vstack(IharTrain), newX])
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_test = np.vstack(tmp)    
-    return SVM(X_train, y_train, X_test, y_test)
