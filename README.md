@@ -3,6 +3,7 @@ Example for testing on Physionet
 ## Install and download dataset
 Create directory/ folder for dataset
 ```bash
+/res/
 /Users/"your current user"/mne_data
 ```
 install required packages in **requirement.txt**
