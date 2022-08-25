@@ -249,8 +249,6 @@ if __name__ == "__main__":
     listAcc = []
     listSeed = [x*500+15 for x in range(50)]
     numTest = 10
-    if typeTest == 'trainTestSeperate':
-        numTest = 1
 
     for testingTime in range(numTest):
         if typeTest == 'trainTestRandom':
@@ -268,7 +266,7 @@ if __name__ == "__main__":
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
                 print("Scenario {} with acc: {}".format(scenario, acc))
                 listAcc.append(acc)
-        #     break
+            break
         # else:
         #     print("Training at {} round".format(testingTime))
         #     setSeed(listSeed[testingTime])

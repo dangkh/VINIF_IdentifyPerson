@@ -1,0 +1,6 @@
+numpy==1.23.2
+sklearn
+torch + torchvision (conda install pytorch torchvision torchaudio cudatoolkit=11.6 -c pytorch -c conda-forge)
+moabb
+braindecode
+pip install git+https://github.com/sylvchev/beetl-competition
