@@ -74,11 +74,19 @@ def PSD(X_train, y_train, X_test, y_test):
 
 
 def IHAR(X_train, y_train, X_test, y_test):
+    listChns = ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 
+            'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 
+            'Fp1', 'Fpz', 'Fp2', 
+            'AF7', 'AF3', 'AFz', 'AF4', 'AF8', 
+            'F7', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FT8', 
+            'T7', 'T8', 'T9', 'T10', 'TP7', 'TP8', 
+            'P7', 'P5', 'P3', 'P1', 'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO3', 'POz', 'PO4', 'PO8', 
+            'O1', 'Oz', 'O2', 'Iz']
     electrodeIHAR = [['Fp1', 'F7', 'F3', 'FC5', 'T7', 'P7', 'O1'], ['Fp2', 'F8', 'F4', 'FC6', 'T8', 'P8', 'O2']]
     numNode = len(electrodeIHAR[0])
     electrodeIndex = []
     for electrodes in electrodeIHAR:
-        electrodeIndex.append([channelCombos[-1].index(x) for x in electrodes])
+        electrodeIndex.append([listChns.index(x) for x in electrodes])
     tmp = []
     for xxx in X_train:
         xx = xxx.T
@@ -274,10 +282,10 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         print("Model architecture >>>", model)
         model.to(device)
         criterion = nn.CrossEntropyLoss()
-        lr = 1e-3
+        lr = 3e-4
         optimizer = optim.Adam(model.parameters(), lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
-        n_epochs = 20
+        n_epochs = 10
         _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader,
                                             validLoader, n_class=num_class, log_batch=max(len(trainLoader) // 30, 1))
         return acc
@@ -380,7 +388,8 @@ if __name__ == "__main__":
             listAcc.append(acc)
         elif typeTest == 'trainTestSeperate':
             print("Training at {} round".format(testingTime))
-            for scenario in range(9):
+            for scenario in range(6):
+                print("Validate on 5 scenario")
                 X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, scenario)
                 print(X_train.shape)
                 acc = trainCore(X_train, X_test, y_train, y_test, info)

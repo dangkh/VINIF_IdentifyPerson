@@ -167,11 +167,13 @@ class EEG_data(Dataset):
         # stdMat = np.std(datas, axis=1, keepdims=True)
         
         # for Normal
-        meanMat = np.mean(datas, axis=3, keepdims=True)
-        stdMat = np.std(datas, axis=3, keepdims=True)
+        # meanMat = np.mean(datas, axis=3, keepdims=True)
+        # stdMat = np.std(datas, axis=3, keepdims=True)
         
-        self.X = (datas - meanMat) / stdMat
-        # self.X = np.asarray(datas)
+        # self.X = (datas - meanMat) / stdMat
+        
+        # for DEA
+        self.X = np.asarray(datas)
         self.X = self.X.astype(np.float32) 
 
     def __len__(self):
@@ -829,8 +831,8 @@ def EEGExtractor_byInfo(link, info):
         matrix = tmp.get_data(picks = info['channelType']).T
 
         # uncomment neu chon toan bo channel
-        tmp = tmp.to_data_frame()
-        matrix = tmp.iloc[:, 1:].to_numpy()
+        # tmp = tmp.to_data_frame()
+        # matrix = tmp.iloc[:, 1:].to_numpy()
         listEEG.append(matrix)
     return listEEG, ""
 

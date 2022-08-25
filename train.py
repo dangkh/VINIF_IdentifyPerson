@@ -22,10 +22,12 @@ import random
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 channelCombos = [
-    ['C3', 'Cz', 'C4', 'CP1', 'CP2'], ['F3', 'F4', 'C3', 'C4'], ['Fp1', 'Fp2', 'F7',
-                                                                 'F3', 'F4', 'F8', 'T7', 'C3', 'Cz', 'C4', 'T8', 'P7', 'P3', 'Pz', 'P4', 'P8'],
+    ['Fz', 'Fp1', 'F7', 'F3', 'FC1', 'FC5', 'FT9', 'FT10', 'FC6', 'FC2', 'F4', 'F8', 'Fp2'],
+    ['P3', 'P7', 'PO9', 'Pz', 'PO10', 'P8', 'P4'],
+    ['Cz', 'C3', 'CP5', 'CP1', 'CP2', 'CP6', 'C4'],
     ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'FT9', 'T7', 'CP5', 'CP1', 'P3', 'P7', 'PO9', 'O1', 'Pz', 'Oz', 'O2', 'PO10', 'P8', 'P4', 'CP2', 'CP6', 'T8',
-     'FT10', 'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2']
+     'FT10', 'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2'],
+     ['T7', 'T8']
 ]
 
 listMethods = ['PSD + SVM', 'IHAR + SVM']
@@ -140,14 +142,13 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     if args.eaNorm == 'DEA':
         dataLink = dataName + '_COV_DEA.txt'
         # normR = getNormR(X_train)
-
         # X_train = applyNorm(X_train, normR)
         # X_test = applyNorm(X_test, normR)
         tmp = []
         for label in np.unique(y_train):
             tmplist = X_train[np.where(y_train == label)]
             np.random.shuffle(tmplist)
-            tmp.append(np.mean( tmplist, axis = 0))
+            tmp.append(np.mean( tmplist, axis = 0).T)
         
         # v1
 
@@ -156,15 +157,13 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
         UmeanMat = UmeanMat.T
         # print(np.sum(np.abs(tmpMat - matmul_list([UmeanMat, Sigma_mean * Sigma_mean, UmeanMat.T]))))
-        # print(Sigma_mean)
-        # stop
-        numCov = setting_rank(Sigma_mean)
+        # numCov = setting_rank(Sigma_mean)
         # # numCov = 100
         # UmeanMat = UmeanMat[:numCov]
 
         tmp = []
         for ii in range(len(X_train)):
-            Xnew = np.copy(X_train[ii])
+            Xnew = np.copy(X_train[ii].T)
             tmpMat = np.matmul(Xnew, Xnew.T)
 
             _, Sigma_Test, U_Test = np.linalg.svd(tmpMat , full_matrices=False)
@@ -172,15 +171,13 @@ def trainCore(X_train, X_test, y_train, y_test, info):
             # U_Test = U_Test[:numCov]
             transformMatrix = np.matmul( U_Test, UmeanMat.T)
             Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
-            tmp.append(Xnew)
+            tmp.append(Xnew.T)
         
         X_train = np.asarray(tmp)
-        # normR = getNormR(X_train)
-        # X_train = applyNorm(X_train, normR)
 
         tmp = []
         for ii in range(len(X_test)):
-            Xnew = np.copy(X_test[ii])
+            Xnew = np.copy(X_test[ii].T)
             tmpMat = np.matmul(Xnew, Xnew.T)
 
             _, Sigma_Test, U_Test = np.linalg.svd(tmpMat , full_matrices=False)
@@ -188,18 +185,16 @@ def trainCore(X_train, X_test, y_train, y_test, info):
             # U_Test = U_Test[:numCov]
             transformMatrix = np.matmul( U_Test, UmeanMat.T)
             Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
-            tmp.append(Xnew)
+            tmp.append(Xnew.T)
         X_test = np.asarray(tmp)
-        # X_test = applyNorm(X_test, normR)
-
-        normR = getNormR(X_train)
+        normR = getNormR(X_train, X_train.shape[-1])
 
         X_train = applyNorm(X_train, normR)
         X_test = applyNorm(X_test, normR)
 
     elif args.eaNorm == 'EA':
         dataLink = dataName + '_COV_EA.txt'
-        normR = getNormR(X_train)
+        normR = getNormR(X_train, X_train.shape[-1])
         tmp = []
         for ii in range(len(X_train)):
             Xnew = np.matmul(X_train[ii], normR)
@@ -296,7 +291,7 @@ if __name__ == "__main__":
     # python train.py --windowSize 128 --modelName PSD --bandL 0.1 --bandR 50 --extractFixation False --thinking False --trainTestSeperate False --trainTestSession False
     '''
     listPaths = []
-    numberObject = 10
+    numberObject = 50
     counter = 0
 
     prePath = args.input
