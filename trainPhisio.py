@@ -133,16 +133,8 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     elif args.eaNorm == 'EA':
         dataLink = dataName + '_COV_EA.txt'
         normR = getNormR(X_train, 64)
-        tmp = []
-        for ii in range(len(X_train)):
-            Xnew = np.matmul(X_train[ii], normR)
-            tmp.append(Xnew)
-        X_train = np.asarray(tmp)
-        tmp = []
-        for ii in range(len(X_test)):
-            Xnew = np.matmul(X_test[ii], normR)
-            tmp.append(Xnew)
-        X_test = np.asarray(tmp)
+        X_train = applyNorm(X_train, normR)
+        X_test = applyNorm(X_test, normR)
 
     if args.modelName == 'PSD':
         return PSD(X_train, y_train, X_test, y_test)
