@@ -598,7 +598,8 @@ def EEGByFixation_byInfo(link, listFixation, info):
         print("Fix info: ", startFix, " ", stopFix, " ", stopFix - startFix)
         if stopFix - startFix <= 0.1:
             continue
-
+        if len(eegTs[eegTs['TimeStamp'] >= startFix]) == 0:
+            break
         # get EEG frame by index
         start = [eegTs[eegTs['TimeStamp'] >= startFix].index[0] /  128 + 0.01]
         # print(eegTs[eegTs['TimeStamp'] <= stopFix])

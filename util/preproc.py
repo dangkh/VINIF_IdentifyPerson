@@ -251,10 +251,7 @@ def setting_rank(eigen_vector):
 
 
 def applyNorm(X_train, normMat):
-    tmp = []
-    for ii in range(len(X_train)):
-        Xnew = np.matmul(X_train[ii], normMat)
-        tmp.append(Xnew)
+    tmp = [np.matmul(X, normMat) for X in X_train]
     return np.asarray(tmp)
 
 
