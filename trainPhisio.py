@@ -82,59 +82,19 @@ def extractDataPhisio_byInfo(info):
 
 
 def trainCore(X_train, X_test, y_train, y_test, info):
-    mean = np.mean(X_train, axis=0, keepdims=True)
-    std = np.std(X_train, axis=0, keepdims=True)
-    X_train = (X_train - mean) / std
-    X_test = (X_test - mean) / std
+    X_train, X_test, _, _ = normMat(X_train, X_test)
 
-    if args.eaNorm == 'DEA':
-        dataLink = dataName + '_COV_DEA.txt'
-        tmp = []
-        for label in np.unique(y_train):
-            tmplist = X_train[np.where(y_train == label)]
-            np.random.shuffle(tmplist)
-            tmp.append(np.mean( tmplist, axis = 0))
+    if args.eaNorm == 'DEA':    
+        allMat = listRepresent(X_train, y_train, False)
+        UmeanMat = getV_SVD(allMat)
         
-        allMat = np.hstack(tmp)
-        tmpMat = np.matmul(allMat, allMat.T)
-        _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
-        UmeanMat = UmeanMat.T
+        X_train = transformMat(X_train, UmeanMat, False)
+        X_test = transformMat(X_test, UmeanMat, False)
 
-        tmp = []
-        for ii in range(len(X_train)):
-            Xnew = np.copy(X_train[ii])
-            tmpMat = np.matmul(Xnew, Xnew.T)
-
-            _, Sigma_Test, U_Test = np.linalg.svd(tmpMat , full_matrices=False)
-            U_Test = U_Test.T
-            transformMatrix = np.matmul( U_Test, UmeanMat.T)
-            Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
-            tmp.append(Xnew)
-        
-        X_train = np.asarray(tmp)
-
-        tmp = []
-        for ii in range(len(X_test)):
-            Xnew = np.copy(X_test[ii])
-            tmpMat = np.matmul(Xnew, Xnew.T)
-
-            _, Sigma_Test, U_Test = np.linalg.svd(tmpMat , full_matrices=False)
-            U_Test = U_Test.T
-            transformMatrix = np.matmul( U_Test, UmeanMat.T)
-            Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
-            tmp.append(Xnew)
-        X_test = np.asarray(tmp)
-
-        normR = getNormR(X_train, 64)
-
-        X_train = applyNorm(X_train, normR)
-        X_test = applyNorm(X_test, normR)
+        X_train, X_test = EANorm(X_train, X_test)
 
     elif args.eaNorm == 'EA':
-        dataLink = dataName + '_COV_EA.txt'
-        normR = getNormR(X_train, 64)
-        X_train = applyNorm(X_train, normR)
-        X_test = applyNorm(X_test, normR)
+        X_train, X_test = EANorm(X_train, X_test)
 
     if args.modelName == 'PSD':
         return PSD(X_train, y_train, X_test, y_test)
@@ -165,7 +125,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         lr = 3e-4
         optimizer = optim.Adam(model.parameters(), lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
-        n_epochs = 1
+        n_epochs = 10
         _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader,
                                             validLoader, n_class=num_class, log_batch=max(len(trainLoader) // 30, 1))
         return acc
@@ -252,8 +212,9 @@ if __name__ == "__main__":
 
     listAcc = []
     listSeed = [x*500+15 for x in range(50)]
-    numTest = 1
-
+    numTest = 10
+    if typeTest == 'trainTestSeperate':
+        numTest = 1
     for testingTime in range(numTest):
         if typeTest == 'trainTestRandom':
             print("Training at {} round".format(testingTime))
@@ -271,7 +232,6 @@ if __name__ == "__main__":
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
                 print("Scenario {} with acc: {}".format(scenario, acc))
                 listAcc.append(acc)
-                break
         # else:
         #     print("Training at {} round".format(testingTime))
         #     setSeed(listSeed[testingTime])
