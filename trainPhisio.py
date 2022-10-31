@@ -84,7 +84,7 @@ def extractDataPhisio_byInfo(info):
 def trainCore(X_train, X_test, y_train, y_test, info):
     X_train, X_test, _, _ = normMat(X_train, X_test)
     if args.eaNorm == 'DEA':
-        allMat = listRepresent(X_train, y_train)
+        allMat = listRepresent(X_train, y_train, False)
         UmeanMat = getV_SVD(allMat)
         
         X_train = transformMat(X_train, UmeanMat, False)
@@ -106,6 +106,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 
     if args.modelName == 'SVM':
         return SVM(X_train, y_train, X_test, y_test)
+
     elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
         n_samples, n_timestamp, n_channels = X_train.shape
         X_train = X_train.reshape((n_samples, n_timestamp, n_channels, 1))
@@ -125,7 +126,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         lr = 3e-4
         optimizer = optim.Adam(model.parameters(), lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, 16, gamma=0.1, last_epoch=-1)
-        n_epochs = 1
+        n_epochs = 10
         _, llos, acc, accTrain = trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader,
                                             validLoader, n_class=num_class, log_batch=max(len(trainLoader) // 30, 1))
         return acc
@@ -216,7 +217,6 @@ if __name__ == "__main__":
     numTest = 10
     if typeTest == 'trainTestSeperate':
         numTest = 1
-
     for testingTime in range(numTest):
         if typeTest == 'trainTestRandom':
             print("Training at {} round".format(testingTime))
@@ -234,7 +234,6 @@ if __name__ == "__main__":
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
                 print("Scenario {} with acc: {}".format(scenario, acc))
                 listAcc.append(acc)
-                break
         # else:
         #     print("Training at {} round".format(testingTime))
         #     setSeed(listSeed[testingTime])

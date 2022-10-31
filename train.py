@@ -41,58 +41,19 @@ listMethods = ['PSD + SVM', 'IHAR + SVM']
 
 
 def trainCore(X_train, X_test, y_train, y_test, info):
-    mean = np.mean(X_train, axis=0, keepdims=True)
-    std = np.std(X_train, axis=0, keepdims=True)
-    X_train = (X_train - mean) / std
-    X_test = (X_test - mean) / std
+    X_train, X_test, _, _ = normMat(X_train, X_test)
 
-    if args.eaNorm == 'DEA':
-        dataLink = dataName + '_COV_DEA.txt'
-        tmp = []
-        for label in np.unique(y_train):
-            tmplist = X_train[np.where(y_train == label)]
-            np.random.shuffle(tmplist)
-            tmp.append(np.mean( tmplist, axis = 0).T)
+    if args.eaNorm == 'DEA':    
+        allMat = listRepresent(X_train, y_train, True)
+        UmeanMat = getV_SVD(allMat)
         
-        allMat = np.hstack(tmp)
-        tmpMat = np.matmul(allMat, allMat.T)
-        _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
-        UmeanMat = UmeanMat.T
+        X_train = transformMat(X_train, UmeanMat, True)
+        X_test = transformMat(X_test, UmeanMat, True)
 
-        tmp = []
-        for ii in range(len(X_train)):
-            Xnew = np.copy(X_train[ii].T)
-            tmpMat = np.matmul(Xnew, Xnew.T)
-
-            _, Sigma_Test, U_Test = np.linalg.svd(tmpMat , full_matrices=False)
-            U_Test = U_Test.T
-            transformMatrix = np.matmul( U_Test, UmeanMat.T)
-            Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
-            tmp.append(Xnew.T)
-        
-        X_train = np.asarray(tmp)
-
-        tmp = []
-        for ii in range(len(X_test)):
-            Xnew = np.copy(X_test[ii].T)
-            tmpMat = np.matmul(Xnew, Xnew.T)
-
-            _, Sigma_Test, U_Test = np.linalg.svd(tmpMat , full_matrices=False)
-            U_Test = U_Test.T
-            transformMatrix = np.matmul( U_Test, UmeanMat.T)
-            Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
-            tmp.append(Xnew.T)
-        X_test = np.asarray(tmp)
-        normR = getNormR(X_train, X_train.shape[-1])
-
-        X_train = applyNorm(X_train, normR)
-        X_test = applyNorm(X_test, normR)
+        X_train, X_test = EANorm(X_train, X_test)
 
     elif args.eaNorm == 'EA':
-        dataLink = dataName + '_COV_EA.txt'
-        normR = getNormR(X_train, X_train.shape[-1])
-        X_train = applyNorm(X_train, normR)
-        X_test = applyNorm(X_test, normR)
+        X_train, X_test = EANorm(X_train, X_test)
 
     if args.modelName == 'PSD':
         return PSD(X_train, y_train, X_test, y_test)

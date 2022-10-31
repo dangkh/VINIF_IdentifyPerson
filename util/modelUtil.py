@@ -173,7 +173,7 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
         scheduler.step()
         sys.stdout.write("\r[{0}] {1}% loss: {2: 3f}".format('#' * 50, 100, mean_loss))
         sys.stdout.flush()
-        acc = evaluateModel(model, plotConfusion=True, dataLoader=validLoader, n_class=n_class)
+        acc = evaluateModel(model, plotConfusion=False, dataLoader=validLoader, n_class=n_class)
         accTrain = evaluateModel(model, plotConfusion=False, dataLoader=trainLoader, n_class=n_class)
     return model, llos, acc, accTrain
 
@@ -191,9 +191,9 @@ def SVM(X_train, y_train, X_test, y_test):
     acc = counter * 100.0 / len(predicted)
     return acc
 
-def PSD(X_train, y_train, X_test, y_test):
+def mat2PSD(X):
     tmp = []
-    for xxx in X_train:
+    for xxx in X:
         xx = xxx.T
         fft_rs, freq = GetFFT(xx)
         newX = GetPSD(fft_rs)
@@ -201,36 +201,30 @@ def PSD(X_train, y_train, X_test, y_test):
         newX = newX.real
         newX = newX.reshape(-1)
         tmp.append(newX)
-    X_train = np.vstack(tmp)
+    return np.vstack(tmp)
 
-    tmp = []
-    for xxx in X_test:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_test = np.vstack(tmp)
+def data2PSD(X_train, X_test):
+    return mat2PSD(X_train), mat2PSD(X_test)
+
+def PSD(X_train, y_train, X_test, y_test):
+    X_train, X_test = data2PSD(X_train, X_test)
     return SVM(X_train, y_train, X_test, y_test)
 
 
-def IHAR(X_train, y_train, X_test, y_test, listChns):
-    
+def mat2IHAR(X, listChns):
     electrodeIHAR = [['Fp1', 'F7', 'F3', 'FC5', 'T7', 'P7', 'O1'], ['Fp2', 'F8', 'F4', 'FC6', 'T8', 'P8', 'O2']]
     numNode = len(electrodeIHAR[0])
     electrodeIndex = []
     for electrodes in electrodeIHAR:
         electrodeIndex.append([listChns.index(x) for x in electrodes])
     tmp = []
-    for xxx in X_train:
+    for xxx in X:
         xx = xxx.T
         fft_rs, freq = GetFFT(xx)
         newX = GetPSD(fft_rs)
         newX = np.asarray(newX)
         newX = newX.real
-        newX = MA(newX, args.windowIHAR)
+        newX = MA(newX, 10)
         IharTrain = []
         for ii in range(numNode):
             left = newX[electrodeIndex[0][ii]]
@@ -240,24 +234,79 @@ def IHAR(X_train, y_train, X_test, y_test, listChns):
         newX = np.vstack([np.vstack(IharTrain), newX])
         newX = newX.reshape(-1)
         tmp.append(newX)
-    X_train = np.vstack(tmp)
+    return np.vstack(tmp)
 
-    tmp = []
-    for xxx in X_test:
-        xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
-        newX = np.asarray(newX)
-        newX = newX.real
-        newX = MA(newX, args.windowIHAR)
-        IharTrain = []
-        for ii in range(numNode):
-            left = newX[electrodeIndex[0][ii]]
-            right = newX[electrodeIndex[1][ii]]
-            ihar = left / right
-            IharTrain.append(ihar)
-        newX = np.vstack([np.vstack(IharTrain), newX])
-        newX = newX.reshape(-1)
-        tmp.append(newX)
-    X_test = np.vstack(tmp)    
+
+def IHAR(X_train, y_train, X_test, y_test, listChns):
+    X_train = mat2IHAR(X_train, listChns)
+    X_test = mat2IHAR(X_test, listChns)
+    
     return SVM(X_train, y_train, X_test, y_test)
+
+
+def listRepresent(X_train, y_train, reverse = False):
+    tmp = []
+    for label in np.unique(y_train):
+        tmplist = X_train[np.where(y_train == label)]
+        meanMat = np.mean( tmplist, axis = 0)
+        if reverse:
+            meanMat = meanMat.T
+        tmp.append(meanMat)
+    return np.hstack(tmp)
+
+def getV_SVD(matrix):
+    tmpMat = np.matmul(matrix, matrix.T)
+    _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
+    UmeanMat = UmeanMat.T
+    return UmeanMat
+
+def normMat(X_train, X_test):
+    mean = np.mean(X_train, axis=0, keepdims=True)
+    std = np.std(X_train, axis=0, keepdims=True)
+    X_train = (X_train - mean) / std
+    X_test = (X_test - mean) / std
+    return X_train, X_test, mean, std 
+
+def transformMat(X, Basis, reverse = False):
+    tmp = []
+    for ii in range(len(X)):
+        Xnew = np.copy(X[ii])
+        if reverse:
+            Xnew = Xnew.T
+        U_Test = getV_SVD(Xnew)
+
+        transformMatrix = np.matmul( U_Test, Basis.T)
+        Xnew = matmul_list([ Basis.T, transformMatrix, U_Test, Xnew])
+        tmp.append(Xnew)
+    return np.asarray(tmp)
+
+def EANorm(X_train, X_test):
+    normR = getNormR(X_train, X_train.shape[-1])
+    X_train = applyNorm(X_train, normR)
+    X_test = applyNorm(X_test, normR)
+    return X_train, X_test
+
+
+# def vis():
+#     embeddings = []
+
+#     model.eval()
+#     for X in validLoader:
+#         e = model(X[0].to(device))
+#         embeddings.append(e.cpu().detach().numpy())
+
+#     embeddings = np.concatenate(embeddings)
+
+#     from sklearn.manifold import TSNE
+#     tsne = TSNE(n_components=2)
+#     transformed = tsne.fit_transform(embeddings)
+
+#     import seaborn as sns
+#     palette = sns.color_palette("bright", 7)
+#     sns.scatterplot(
+#         x=transformed[:,0],
+#         y=transformed[:,1],
+#         hue=validLoader.dataset.y,
+#         legend='full',
+#         palette=palette
+#     )
