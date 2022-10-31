@@ -82,70 +82,30 @@ def extractDataPhisio_byInfo(info):
 
 
 def trainCore(X_train, X_test, y_train, y_test, info):
-    mean = np.mean(X_train, axis=0, keepdims=True)
-    std = np.std(X_train, axis=0, keepdims=True)
-    X_train = (X_train - mean) / std
-    X_test = (X_test - mean) / std
-
+    X_train, X_test, _, _ = normMat(X_train, X_test)
     if args.eaNorm == 'DEA':
-        dataLink = dataName + '_COV_DEA.txt'
-        tmp = []
-        for label in np.unique(y_train):
-            tmplist = X_train[np.where(y_train == label)]
-            np.random.shuffle(tmplist)
-            tmp.append(np.mean( tmplist, axis = 0))
+        allMat = listRepresent(X_train, y_train)
+        UmeanMat = getV_SVD(allMat)
         
-        allMat = np.hstack(tmp)
-        tmpMat = np.matmul(allMat, allMat.T)
-        _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
-        UmeanMat = UmeanMat.T
+        X_train = transformMat(X_train, UmeanMat, False)
+        X_test = transformMat(X_test, UmeanMat, False)
 
-        tmp = []
-        for ii in range(len(X_train)):
-            Xnew = np.copy(X_train[ii])
-            tmpMat = np.matmul(Xnew, Xnew.T)
-
-            _, Sigma_Test, U_Test = np.linalg.svd(tmpMat , full_matrices=False)
-            U_Test = U_Test.T
-            transformMatrix = np.matmul( U_Test, UmeanMat.T)
-            Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
-            tmp.append(Xnew)
-        
-        X_train = np.asarray(tmp)
-
-        tmp = []
-        for ii in range(len(X_test)):
-            Xnew = np.copy(X_test[ii])
-            tmpMat = np.matmul(Xnew, Xnew.T)
-
-            _, Sigma_Test, U_Test = np.linalg.svd(tmpMat , full_matrices=False)
-            U_Test = U_Test.T
-            transformMatrix = np.matmul( U_Test, UmeanMat.T)
-            Xnew = matmul_list([ UmeanMat.T, transformMatrix, U_Test, Xnew])
-            tmp.append(Xnew)
-        X_test = np.asarray(tmp)
-
-        normR = getNormR(X_train, 64)
-
-        X_train = applyNorm(X_train, normR)
-        X_test = applyNorm(X_test, normR)
+        X_train, X_test = EANorm(X_train, X_test, X_train)
 
     elif args.eaNorm == 'EA':
-        dataLink = dataName + '_COV_EA.txt'
-        normR = getNormR(X_train, 64)
-        X_train = applyNorm(X_train, normR)
-        X_test = applyNorm(X_test, normR)
+        X_train, X_test = EANorm(X_train, X_test, X_train)
 
-    if args.modelName == 'PSD':
-        return PSD(X_train, y_train, X_test, y_test)
+    if args.modelFeatures == 'PSD':
+        X_train, y_train, X_test, y_test = PSD(X_train, y_train, X_test, y_test)
+        print(X_train.shape)
+    elif args.modelFeatures == 'IHAR':
+        X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
+    elif args.modelFeatures == 'APF':
+        X_train = np.mean(np.log(np.abs(X_train)), axis = 1)
+        X_test = np.mean(np.log(np.abs(X_test)), axis = 1)
 
-        
-    elif args.modelName == 'IHAR':
-        return IHAR(X_train, y_train, X_test, y_test, listChns)           
-    elif args.modelName == 'WLD':
-        return -1
-        pass
-
+    if args.modelName == 'SVM':
+        return SVM(X_train, y_train, X_test, y_test)
     elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
         n_samples, n_timestamp, n_channels = X_train.shape
         X_train = X_train.reshape((n_samples, n_timestamp, n_channels, 1))
@@ -200,6 +160,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train')
     parser.add_argument('--modelName', help='name of model : {}'.format(listMethods))
+    parser.add_argument('--modelFeatures', help='name of features : PSD, IHAR, APF, RAW', default='RAW')
     parser.add_argument('--bandL', help='band filter', default=4.0, type=float)
     parser.add_argument('--bandR', help='band filter', default=50.0, type=float)
     parser.add_argument('--eaNorm', help='EA norm', default='False')
@@ -252,7 +213,9 @@ if __name__ == "__main__":
 
     listAcc = []
     listSeed = [x*500+15 for x in range(50)]
-    numTest = 1
+    numTest = 10
+    if typeTest == 'trainTestSeperate':
+        numTest = 1
 
     for testingTime in range(numTest):
         if typeTest == 'trainTestRandom':
@@ -288,6 +251,6 @@ if __name__ == "__main__":
     print('*'*10, 'Result' ,'*'*10, file = sourceFile)
     print(args, file = sourceFile)
     print(listAcc, file = sourceFile)
-    print(np.mean(listAcc), np.max(listAcc) - np.mean(listAcc), file = sourceFile)
+    print("Result: ", np.mean(listAcc), np.max(listAcc) - np.mean(listAcc), file = sourceFile)
     print('*'*10, 'End' ,'*'*10, file = sourceFile)
     sourceFile.close()
