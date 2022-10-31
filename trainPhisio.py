@@ -83,27 +83,29 @@ def extractDataPhisio_byInfo(info):
 
 def trainCore(X_train, X_test, y_train, y_test, info):
     X_train, X_test, _, _ = normMat(X_train, X_test)
-    if args.eaNorm == 'DEA':    
+    if args.eaNorm == 'DEA':
         allMat = listRepresent(X_train, y_train, False)
         UmeanMat = getV_SVD(allMat)
         
         X_train = transformMat(X_train, UmeanMat, False)
         X_test = transformMat(X_test, UmeanMat, False)
 
-        X_train, X_test = EANorm(X_train, X_test)
+        X_train, X_test = EANorm(X_train, X_test, X_train)
 
     elif args.eaNorm == 'EA':
-        X_train, X_test = EANorm(X_train, X_test)
+        X_train, X_test = EANorm(X_train, X_test, X_train)
 
-    if args.modelName == 'SVM_PSD':
-        return PSD(X_train, y_train, X_test, y_test)
+    if args.modelFeatures == 'PSD':
+        X_train, y_train, X_test, y_test = PSD(X_train, y_train, X_test, y_test)
+        print(X_train.shape)
+    elif args.modelFeatures == 'IHAR':
+        X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
+    elif args.modelFeatures == 'APF':
+        X_train = np.mean(np.log(np.abs(X_train)), axis = 1)
+        X_test = np.mean(np.log(np.abs(X_test)), axis = 1)
 
-        
-    elif args.modelName == 'SVM_IHAR':
-        return IHAR(X_train, y_train, X_test, y_test, listChns)           
-    elif args.modelName == 'WLD':
-        return -1
-        pass
+    if args.modelName == 'SVM':
+        return SVM(X_train, y_train, X_test, y_test)
 
     elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
         n_samples, n_timestamp, n_channels = X_train.shape
@@ -159,6 +161,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train')
     parser.add_argument('--modelName', help='name of model : {}'.format(listMethods))
+    parser.add_argument('--modelFeatures', help='name of features : PSD, IHAR, APF, RAW', default='RAW')
     parser.add_argument('--bandL', help='band filter', default=4.0, type=float)
     parser.add_argument('--bandR', help='band filter', default=50.0, type=float)
     parser.add_argument('--eaNorm', help='EA norm', default='False')
@@ -247,6 +250,6 @@ if __name__ == "__main__":
     print('*'*10, 'Result' ,'*'*10, file = sourceFile)
     print(args, file = sourceFile)
     print(listAcc, file = sourceFile)
-    print(np.mean(listAcc), np.max(listAcc) - np.mean(listAcc), file = sourceFile)
+    print("Result: ", np.mean(listAcc), np.max(listAcc) - np.mean(listAcc), file = sourceFile)
     print('*'*10, 'End' ,'*'*10, file = sourceFile)
     sourceFile.close()

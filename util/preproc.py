@@ -186,7 +186,7 @@ def getNormR(data, shapeIn = 32):
         covX = np.matmul(data[ii].T, data[ii])
         normR += covX
     normR = normR / len(data)
-    normR = sqrtm(normR)
+    # normR = sqrtm(normR)
     normR = np.linalg.inv(normR)
     return normR
 
@@ -261,3 +261,45 @@ def setSeed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
+def EANorm(X_train, X_test, refer):
+    normR = getNormR(refer, refer.shape[-1])
+    X_train = applyNorm(X_train, normR)
+    X_test = applyNorm(X_test, normR)
+    return X_train, X_test
+
+
+def transformMat(X, Basis, reverse = False):
+    tmp = []
+    for ii in range(len(X)):
+        Xnew = np.copy(X[ii])
+        if reverse:
+            Xnew = Xnew.T
+        U_Test = getV_SVD(Xnew)
+
+        transformMatrix = np.matmul( U_Test, Basis.T)
+        Xnew = matmul_list([ Basis.T, transformMatrix, U_Test, Xnew])
+        tmp.append(Xnew)
+    return np.asarray(tmp)
+
+def normMat(X_train, X_test):
+    mean = np.mean(X_train, axis=0, keepdims=True)
+    std = np.std(X_train, axis=0, keepdims=True)
+    X_train = (X_train - mean) / std
+    X_test = (X_test - mean) / std
+    return X_train, X_test, mean, std 
+
+def listRepresent(X_train, y_train, reverse = False):
+    tmp = []
+    for label in np.unique(y_train):
+        tmplist = X_train[np.where(y_train == label)]
+        meanMat = np.mean( tmplist, axis = 0)
+        if reverse:
+            meanMat = meanMat.T
+        tmp.append(meanMat)
+    return np.hstack(tmp)
+
+def getV_SVD(matrix):
+    tmpMat = np.matmul(matrix, matrix.T)
+    _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
+    UmeanMat = UmeanMat.T
+    return UmeanMat
