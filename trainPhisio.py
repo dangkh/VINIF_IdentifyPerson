@@ -83,7 +83,6 @@ def extractDataPhisio_byInfo(info):
 
 def trainCore(X_train, X_test, y_train, y_test, info):
     X_train, X_test, _, _ = normMat(X_train, X_test)
-
     if args.eaNorm == 'DEA':    
         allMat = listRepresent(X_train, y_train, False)
         UmeanMat = getV_SVD(allMat)
@@ -96,11 +95,11 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     elif args.eaNorm == 'EA':
         X_train, X_test = EANorm(X_train, X_test)
 
-    if args.modelName == 'PSD':
+    if args.modelName == 'SVM_PSD':
         return PSD(X_train, y_train, X_test, y_test)
 
         
-    elif args.modelName == 'IHAR':
+    elif args.modelName == 'SVM_IHAR':
         return IHAR(X_train, y_train, X_test, y_test, listChns)           
     elif args.modelName == 'WLD':
         return -1
