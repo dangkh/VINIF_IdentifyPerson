@@ -5,3 +5,4 @@
 \__pycache__\*
 *.bat
 .DS_Store
+*.png

@@ -241,7 +241,7 @@ def IHAR(X_train, y_train, X_test, y_test, listChns):
     X_train = mat2IHAR(X_train, listChns)
     X_test = mat2IHAR(X_test, listChns)
     
-    return SVM(X_train, y_train, X_test, y_test)
+    return X_train, y_train, X_test, y_test
 
 
 def listRepresent(X_train, y_train, reverse = False):

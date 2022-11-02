@@ -169,6 +169,7 @@ if __name__ == "__main__":
     parser.add_argument('--modelName', help='name of model : {}'.format(listMethods))
     parser.add_argument('--modelFeatures', help='name of features : PSD, IHAR, APF, RAW', default='RAW')
     parser.add_argument('--numSub', help='number of Subject', default=50, type=int)
+    parser.add_argument('--numChan', help='number of channel', default=-1, type=int)
     parser.add_argument('--bandL', help='band filter', default=4.0, type=float)
     parser.add_argument('--bandR', help='band filter', default=50.0, type=float)
     parser.add_argument('--eaNorm', help='EA norm', default='False')
@@ -203,6 +204,7 @@ if __name__ == "__main__":
             'modelName': args.modelName, 
             'typeTest': typeTest,
             'numSub': args.numSub, 
+            'numChan': args.numChan, 
             'thinking': strtobool(args.thinking)
         }
     if not os.path.exists(dataLink):
@@ -219,6 +221,10 @@ if __name__ == "__main__":
         np.save(dataLink, PreProDatas)
     else:
         PreProDatas = np.load(dataLink, allow_pickle=True)
+        if args.numChan != -1:
+            PreProDatas = PreProDatas[:, :, :int(args.numChan)]
+        else:
+            listChan2Index = [listChns.index(x) for x in channelCombos[args.channelType]]
 
     listAcc = []
     listSeed = [x*500+15 for x in range(50)]

@@ -43,7 +43,6 @@ ds_src2 = PhysionetMI()
 raw = ds_src2.get_data(subjects=[1])[1]['session_0']['run_1']
 channels = raw.pick_types(eeg=True).ch_names
 print(channels)
-stop
 
 listChns = ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz', 
             'CP2', 'CP4', 'CP6', 'Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8', 'F7', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 
