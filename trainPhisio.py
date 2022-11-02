@@ -28,7 +28,7 @@ from moabb.paradigms import MotorImagery
 
 
 
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+# os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 channelCombos = [
     ['C3', 'Cz', 'C4', 'CP1', 'CP2'], ['F3', 'F4', 'C3', 'C4'], ['Fp1', 'Fp2', 'F7',
@@ -55,8 +55,10 @@ def extractSub(ids, X_src2, m_src2):
     data = []
     cur = -1
     tmp = []
+    listRun = ["run_4", "run_6", "run_8", "run_10", "run_12", "run_14"]
     for ii in range(len(tmpM)):
         scenarioID = ord(tmpM.iloc[ii]['run'][-1]) - ord('0') 
+        # scenarioID = listRun.index(tmpM.iloc[ii]['run'])
         if cur != scenarioID and len(tmp) > 0:
             cur = scenarioID
             data.append([scenarioID,tmp, ''])
@@ -71,7 +73,7 @@ def extractDataPhisio_byInfo(info):
     fmin, fmax = info['bandL'], info['bandR']
     sfreq = 128.
     ds_src2 = PhysionetMI()
-    numSub = 5
+    numSub = info['numSub']
     datas = []
     prgm_4classes = MotorImagery(n_classes=4, resample=sfreq, fmin=fmin, fmax=fmax)
     X_src2, label_src2, m_src2 = prgm_4classes.get_data(dataset=ds_src2, subjects=[x+1 for x in range(numSub)])
@@ -166,6 +168,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train')
     parser.add_argument('--modelName', help='name of model : {}'.format(listMethods))
     parser.add_argument('--modelFeatures', help='name of features : PSD, IHAR, APF, RAW', default='RAW')
+    parser.add_argument('--numSub', help='number of Subject', default=50, type=int)
     parser.add_argument('--bandL', help='band filter', default=4.0, type=float)
     parser.add_argument('--bandR', help='band filter', default=50.0, type=float)
     parser.add_argument('--eaNorm', help='EA norm', default='False')
@@ -181,13 +184,13 @@ if __name__ == "__main__":
     if strtobool(args.trainTestSeperate):
         typeTest = 'trainTestSeperate'
 
-    dataName = f'./PHISYO_band_{str(args.bandL)}_{str(args.bandR)}_channelType_{str(args.channelType)}_{typeTest}'
+    dataName = f'./PHISYO__numberSub{str(args.numSub)}_band_{str(args.bandL)}_{str(args.bandR)}_channelType_{str(args.channelType)}_{typeTest}'
     if strtobool(args.thinking):
         dataName += '_thinking'
     dataRaw = dataName +'_RAW.npy'
     # duration
-    if int(args.windowSize) != 128:
-        dataName += f'_size{args.windowSize}'
+    # if int(args.windowSize) != 128:
+    #     dataName += f'_size{args.windowSize}'
     # normal
     dataLink = dataName + '.npy'
     print(dataLink)
@@ -203,13 +206,13 @@ if __name__ == "__main__":
         }
     if not os.path.exists(dataLink):
         # normal
-        # datas = extractDataPhisio_byInfo(info)
+        datas = extractDataPhisio_byInfo(info)
         # vary window size
-        if not os.path.exists(dataRaw):            
-            datas = extractDataPhisio_byInfo(info)
-            np.save(dataRaw, datas)
-        else:
-            datas = np.load(dataRaw, allow_pickle=True)    
+        # if not os.path.exists(dataRaw):            
+        #     datas = extractDataPhisio_byInfo(info)
+        #     np.save(dataRaw, datas)
+        # else:
+        #     datas = np.load(dataRaw, allow_pickle=True)    
         print("Number of subjects in data: ", len(datas))
         PreProDatas = preprocessDataInfo(datas, info)
         np.save(dataLink, PreProDatas)
