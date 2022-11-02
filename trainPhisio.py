@@ -202,6 +202,7 @@ if __name__ == "__main__":
             'channelType': channelCombos[args.channelType],
             'modelName': args.modelName, 
             'typeTest': typeTest,
+            'numSub': args.numSub, 
             'thinking': strtobool(args.thinking)
         }
     if not os.path.exists(dataLink):
