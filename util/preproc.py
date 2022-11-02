@@ -192,11 +192,11 @@ def getNormR(data, shapeIn = 32):
 
 
 # Calculate FFT of data Pos or Neg
-def GetFFT(datas):
-    sampling_length = 128
+def GetFFT(datas, lenTrial = 128):
+    sampling_length = lenTrial
     fft_rs = []
     for data in datas:
-        ts = 1.0/ 128
+        ts = 1.0/ lenTrial
 
         freq = np.fft.fftfreq(len(data), d = ts)
         fft = np.fft.fft(data)
@@ -205,13 +205,13 @@ def GetFFT(datas):
     return fft_rs, freq
 
 # Calculate Power Spectral Density(PSD) (equation 1)
-def GetPSD(datas):
-    sampling_length = 128
+def GetPSD(datas, lenTrial = 128):
+    sampling_length = lenTrial
     PSD_rs = []
     for data in datas:
         PSD_seg = []
         for d in data:
-            PSD_n = d * np.conjugate(d)/128
+            PSD_n = d * np.conjugate(d)/lenTrial
             PSD_seg.append(PSD_n)
         PSD_rs.append(PSD_seg)
   

@@ -195,8 +195,8 @@ def mat2PSD(X):
     tmp = []
     for xxx in X:
         xx = xxx.T
-        fft_rs, freq = GetFFT(xx)
-        newX = GetPSD(fft_rs)
+        fft_rs, freq = GetFFT(xx, xx.shape[-1])
+        newX = GetPSD(fft_rs, xx.shape[-1])
         newX = np.asarray(newX)
         newX = newX.real
         newX = newX.reshape(-1)
@@ -208,7 +208,7 @@ def data2PSD(X_train, X_test):
 
 def PSD(X_train, y_train, X_test, y_test):
     X_train, X_test = data2PSD(X_train, X_test)
-    return SVM(X_train, y_train, X_test, y_test)
+    return X_train, y_train, X_test, y_test
 
 
 def mat2IHAR(X, listChns):
@@ -245,20 +245,25 @@ def IHAR(X_train, y_train, X_test, y_test, listChns):
 
 
 def listRepresent(X_train, y_train, reverse = False):
+    # tmp = []
+    # for label in np.unique(y_train):
+    #     tmplist = X_train[np.where(y_train == label)]
+    #     meanMat = np.mean( tmplist, axis = 0)
+    #     if reverse:
+    #         meanMat = meanMat.T
+    #     tmp.append(meanMat)
+    # return np.hstack(tmp)
     tmp = []
-    for label in np.unique(y_train):
-        tmplist = X_train[np.where(y_train == label)]
-        meanMat = np.mean( tmplist, axis = 0)
-        if reverse:
-            meanMat = meanMat.T
-        tmp.append(meanMat)
-    return np.hstack(tmp)
+    for x in X_train:
+        tmp.append(x.T @ x)
+    return np.sum(tmp) / len(tmp)
 
 def getV_SVD(matrix):
-    tmpMat = np.matmul(matrix, matrix.T)
+    # tmpMat = np.matmul(matrix, matrix.T)
+    tmpMat = matrix
     _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
     UmeanMat = UmeanMat.T
-    return UmeanMat
+    return UmeanMat, Sigma_mean
 
 def normMat(X_train, X_test):
     mean = np.mean(X_train, axis=0, keepdims=True)
@@ -273,9 +278,14 @@ def transformMat(X, Basis, reverse = False):
         Xnew = np.copy(X[ii])
         if reverse:
             Xnew = Xnew.T
-        U_Test = getV_SVD(Xnew)
-
-        transformMatrix = np.matmul( U_Test, Basis.T)
+        U_Test, eigenValue = getV_SVD(Xnew)
+        k = 0
+        for x in range(len(eigenValue)):
+            k = x
+            if eigen_vector[x] < 1:
+                break
+        k = 32
+        transformMatrix = np.matmul( U_Test[:, :k], Basis[:, :k].T)
         Xnew = matmul_list([ Basis.T, transformMatrix, U_Test, Xnew])
         tmp.append(Xnew)
     return np.asarray(tmp)

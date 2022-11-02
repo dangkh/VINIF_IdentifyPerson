@@ -97,7 +97,6 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 
     if args.modelFeatures == 'PSD':
         X_train, y_train, X_test, y_test = PSD(X_train, y_train, X_test, y_test)
-        print(X_train.shape)
     elif args.modelFeatures == 'IHAR':
         X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
     elif args.modelFeatures == 'APF':
@@ -108,6 +107,11 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         return SVM(X_train, y_train, X_test, y_test)
 
     elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
+        # print(X_train.shape)
+        # X_train = np.expand_dims(X_train, axis=1)
+        # X_test = np.expand_dims(X_test, axis=1)
+        # print(X_train.shape)
+        # stop
         n_samples, n_timestamp, n_channels = X_train.shape
         X_train = X_train.reshape((n_samples, n_timestamp, n_channels, 1))
         X_train = np.transpose(X_train, (0, 3, 1, 2))
@@ -182,8 +186,8 @@ if __name__ == "__main__":
         dataName += '_thinking'
     dataRaw = dataName +'_RAW.npy'
     # duration
-    # if int(args.windowSize) != 128:
-    # dataName += f'_size{args.windowSize}'
+    if int(args.windowSize) != 128:
+        dataName += f'_size{args.windowSize}'
     # normal
     dataLink = dataName + '.npy'
     print(dataLink)
@@ -199,13 +203,13 @@ if __name__ == "__main__":
         }
     if not os.path.exists(dataLink):
         # normal
-        datas = extractDataPhisio_byInfo(info)
+        # datas = extractDataPhisio_byInfo(info)
         # vary window size
-        # if not os.path.exists(dataRaw):            
-        #     datas = extractData_byInfo(info)
-        #     np.save(dataRaw, datas)
-        # else:
-        #     datas = np.load(dataRaw, allow_pickle=True)    
+        if not os.path.exists(dataRaw):            
+            datas = extractDataPhisio_byInfo(info)
+            np.save(dataRaw, datas)
+        else:
+            datas = np.load(dataRaw, allow_pickle=True)    
         print("Number of subjects in data: ", len(datas))
         PreProDatas = preprocessDataInfo(datas, info)
         np.save(dataLink, PreProDatas)
@@ -230,7 +234,7 @@ if __name__ == "__main__":
             for scenario in range(6):
                 print("Validate on 5 scenario")
                 X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, scenario)
-                print(X_train.shape)
+                print(X_train.shape, X_test.shape)
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
                 print("Scenario {} with acc: {}".format(scenario, acc))
                 listAcc.append(acc)
