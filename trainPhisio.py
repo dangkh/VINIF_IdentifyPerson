@@ -33,8 +33,16 @@ from moabb.paradigms import MotorImagery
 channelCombos = [
     ['C3', 'Cz', 'C4', 'CP1', 'CP2'], ['F3', 'F4', 'C3', 'C4'], ['Fp1', 'Fp2', 'F7',
                                                                  'F3', 'F4', 'F8', 'T7', 'C3', 'Cz', 'C4', 'T8', 'P7', 'P3', 'Pz', 'P4', 'P8'],
-    ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'FT9', 'T7', 'CP5', 'CP1', 'P3', 'P7', 'PO9', 'O1', 'Pz', 'Oz', 'O2', 'PO10', 'P8', 'P4', 'CP2', 'CP6', 'T8',
-     'FT10', 'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2']
+    ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'T7', 'CP5', 'CP1', 'P3', 'P7', 'O1', 'Pz', 'Oz', 'O2', 'P8', 'P4', 'CP2', 'CP6', 'T8', 
+    'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2'],
+     ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 
+            'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 
+            'Fp1', 'Fpz', 'Fp2', 
+            'AF7', 'AF3', 'AFz', 'AF4', 'AF8', 
+            'F7', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FT8', 
+            'T7', 'T8', 'T9', 'T10', 'TP7', 'TP8', 
+            'P7', 'P5', 'P3', 'P1', 'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO3', 'POz', 'PO4', 'PO8', 
+            'O1', 'Oz', 'O2', 'Iz']
 ]
 
 listChns = ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 
@@ -168,12 +176,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train')
     parser.add_argument('--modelName', help='name of model : {}'.format(listMethods))
     parser.add_argument('--modelFeatures', help='name of features : PSD, IHAR, APF, RAW', default='RAW')
-    parser.add_argument('--numSub', help='number of Subject', default=50, type=int)
+    parser.add_argument('--numSub', help='number of Subject', default=5, type=int)
     parser.add_argument('--numChan', help='number of channel', default=-1, type=int)
     parser.add_argument('--bandL', help='band filter', default=4.0, type=float)
     parser.add_argument('--bandR', help='band filter', default=50.0, type=float)
     parser.add_argument('--eaNorm', help='EA norm', default='False')
-    parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=3, type=int)
+    parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=4, type=int)
     parser.add_argument('--windowSize', help='windowSize', default=128, type=int)
     parser.add_argument('--windowIHAR', help='windowIHAR', default=10, type=int)
     parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
@@ -221,10 +229,6 @@ if __name__ == "__main__":
         np.save(dataLink, PreProDatas)
     else:
         PreProDatas = np.load(dataLink, allow_pickle=True)
-        if args.numChan != -1:
-            PreProDatas = PreProDatas[:, :, :int(args.numChan)]
-        else:
-            listChan2Index = [listChns.index(x) for x in channelCombos[args.channelType]]
 
     listAcc = []
     listSeed = [x*500+15 for x in range(50)]
@@ -235,6 +239,11 @@ if __name__ == "__main__":
         if typeTest == 'trainTestRandom':
             print("Training at {} round".format(testingTime))
             X_f, y_f = getData_All(PreProDatas)
+            if int(args.numChan) != -1:
+                X_f = X_f[:, :, :int(args.numChan)]
+            else:
+                listChan2Index = [listChns.index(x) for x in channelCombos[args.channelType]]
+                X_f = X_f[:, :, listChan2Index]
             X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state= listSeed[testingTime])            
             acc = trainCore(X_train, X_test, y_train, y_test, info)
             print(acc)
@@ -244,6 +253,13 @@ if __name__ == "__main__":
             for scenario in range(6):
                 print("Validate on 5 scenario")
                 X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, scenario)
+                if int(args.numChan) != -1:
+                    X_train = X_train[:, :, :int(args.numChan)]
+                    X_test = X_test[:, :, :int(args.numChan)]
+                else:
+                    listChan2Index = [listChns.index(x) for x in channelCombos[args.channelType]]
+                    X_train = X_train[:, :, listChan2Index]
+                    X_test = X_test[:, :, listChan2Index]
                 print(X_train.shape, X_test.shape)
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
                 print("Scenario {} with acc: {}".format(scenario, acc))

@@ -285,7 +285,7 @@ def transformMat(X, Basis, reverse = False):
             if eigen_vector[x] < 1:
                 break
         k = 32
-        transformMatrix = np.matmul( U_Test[:, :k], Basis[:, :k].T)
+        transformMatrix = np.matmul( U_Test, Basis.T)
         Xnew = matmul_list([ Basis.T, transformMatrix, U_Test, Xnew])
         tmp.append(Xnew)
     return np.asarray(tmp)
