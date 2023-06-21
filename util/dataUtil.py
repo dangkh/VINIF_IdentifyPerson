@@ -44,7 +44,10 @@ def preprocessDataInfo(inputData, info):
         subData = inputData[subId]
         preprocSub = []
         for sampleId in range(numberSample):
-            scenarioId, listEEG, _ = subData[sampleId]
+            if info['dataset'] == 'shu':
+                scenarioId, listEEG = subData[sampleId]
+            else:
+                scenarioId, listEEG, _ = subData[sampleId]
             # print(scenarioId)
             newData, label = chunk_matrix(listEEG, scenarioId, size=int(info['windowSize']))
             preprocSub.append([newData, label])

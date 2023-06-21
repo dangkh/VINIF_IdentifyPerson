@@ -10,6 +10,12 @@ from sklearn.svm import LinearSVC
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import make_classification
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
 from scipy.linalg import sqrtm
 from util.nets import *
 import json
@@ -179,8 +185,26 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
 
 
 
-def SVM(X_train, y_train, X_test, y_test):
+def SVM(X_train, y_train, X_test, y_test, clssName = "SVM_RBF"):
     clf = make_pipeline(StandardScaler(), SVC(kernel="linear", C=0.025))
+    if clssName == "SVM_RBF":
+        clf = make_pipeline(StandardScaler(), SVC(gamma='auto'))
+    elif clssName == "NearestNeighbor":
+        clf = KNeighborsClassifier(3)
+        clf = make_pipeline(StandardScaler(), clf)
+    elif clssName == "NaiveBayes":
+        clf = GaussianNB()
+        clf = make_pipeline(StandardScaler(), clf)
+    elif clssName == "RF":
+        clf = RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1)
+        clf = make_pipeline(StandardScaler(), clf)
+    elif clssName == "GaussianProcess":
+        clf = make_pipeline(StandardScaler(), SVC(kernel="poly", C=500, gamma='auto'))
+    elif clssName == "simpleNeuralNet":
+        clf = MLPClassifier(alpha=1, max_iter=1000)
+        clf = make_pipeline(StandardScaler(), clf)
+
+    # clf = make_pipeline(StandardScaler(), SVC(kernel="poly", gamma = 2))
     clf.fit(X_train, y_train)
     predicted = clf.predict(X_test)
     predicted = np.asarray(predicted)
@@ -244,57 +268,57 @@ def IHAR(X_train, y_train, X_test, y_test, listChns):
     return X_train, y_train, X_test, y_test
 
 
-def listRepresent(X_train, y_train, reverse = False):
-    # tmp = []
-    # for label in np.unique(y_train):
-    #     tmplist = X_train[np.where(y_train == label)]
-    #     meanMat = np.mean( tmplist, axis = 0)
-    #     if reverse:
-    #         meanMat = meanMat.T
-    #     tmp.append(meanMat)
-    # return np.hstack(tmp)
-    tmp = []
-    for x in X_train:
-        tmp.append(x.T @ x)
-    return np.sum(tmp) / len(tmp)
+# def listRepresent(X_train, y_train, reverse = False):
+#     # tmp = []
+#     # for label in np.unique(y_train):
+#     #     tmplist = X_train[np.where(y_train == label)]
+#     #     meanMat = np.mean( tmplist, axis = 0)
+#     #     if reverse:
+#     #         meanMat = meanMat.T
+#     #     tmp.append(meanMat)
+#     # return np.hstack(tmp)
+#     tmp = []
+#     for x in X_train:
+#         tmp.append(x.T @ x)
+#     return np.sum(tmp) / len(tmp)
 
-def getV_SVD(matrix):
-    # tmpMat = np.matmul(matrix, matrix.T)
-    tmpMat = matrix
-    _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
-    UmeanMat = UmeanMat.T
-    return UmeanMat, Sigma_mean
+# def getV_SVD(matrix):
+#     # tmpMat = np.matmul(matrix, matrix.T)
+#     tmpMat = matrix
+#     _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
+#     UmeanMat = UmeanMat.T
+#     return UmeanMat, Sigma_mean
 
-def normMat(X_train, X_test):
-    mean = np.mean(X_train, axis=0, keepdims=True)
-    std = np.std(X_train, axis=0, keepdims=True)
-    X_train = (X_train - mean) / std
-    X_test = (X_test - mean) / std
-    return X_train, X_test, mean, std 
+# def normMat(X_train, X_test):
+#     mean = np.mean(X_train, axis=0, keepdims=True)
+#     std = np.std(X_train, axis=0, keepdims=True)
+#     X_train = (X_train - mean) / std
+#     X_test = (X_test - mean) / std
+#     return X_train, X_test, mean, std 
 
-def transformMat(X, Basis, reverse = False):
-    tmp = []
-    for ii in range(len(X)):
-        Xnew = np.copy(X[ii])
-        if reverse:
-            Xnew = Xnew.T
-        U_Test, eigenValue = getV_SVD(Xnew)
-        k = 0
-        for x in range(len(eigenValue)):
-            k = x
-            if eigen_vector[x] < 1:
-                break
-        k = 32
-        transformMatrix = np.matmul( U_Test, Basis.T)
-        Xnew = matmul_list([ Basis.T, transformMatrix, U_Test, Xnew])
-        tmp.append(Xnew)
-    return np.asarray(tmp)
+# def transformMat(X, Basis, reverse = False):
+#     tmp = []
+#     for ii in range(len(X)):
+#         Xnew = np.copy(X[ii])
+#         if reverse:
+#             Xnew = Xnew.T
+#         U_Test, eigenValue = getV_SVD(Xnew)
+#         k = 0
+#         for x in range(len(eigenValue)):
+#             k = x
+#             if eigen_vector[x] < 1:
+#                 break
+#         k = 32
+#         transformMatrix = np.matmul( U_Test, Basis.T)
+#         Xnew = matmul_list([ Basis.T, transformMatrix, U_Test, Xnew])
+#         tmp.append(Xnew)
+#     return np.asarray(tmp)
 
-def EANorm(X_train, X_test):
-    normR = getNormR(X_train, X_train.shape[-1])
-    X_train = applyNorm(X_train, normR)
-    X_test = applyNorm(X_test, normR)
-    return X_train, X_test
+# def EANorm(X_train, X_test):
+#     normR = getNormR(X_train, X_train.shape[-1])
+#     X_train = applyNorm(X_train, normR)
+#     X_test = applyNorm(X_test, normR)
+#     return X_train, X_test
 
 
 # def vis():

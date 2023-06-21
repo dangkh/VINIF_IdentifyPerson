@@ -186,7 +186,7 @@ def getNormR(data, shapeIn = 32):
         covX = np.matmul(data[ii].T, data[ii])
         normR += covX
     normR = normR / len(data)
-    # normR = sqrtm(normR)
+    normR = sqrtm(normR)
     normR = np.linalg.inv(normR)
     return normR
 

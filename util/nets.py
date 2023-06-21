@@ -114,7 +114,7 @@ class CNN_LSTM(torch.nn.Module):
         ii = 0  # define CONV layer architecture: #####
         for in_channels, out_channels in zip(conv_channels, conv_channels[1:]):
             conv_i = torch.nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
-                                     kernel_size=kernel_size[ii], stride=(1, 1),
+                                     kernel_size=kernel_size[ii], stride=(2, 1),
                                      padding=(kernel_size[ii][0] // 2, kernel_size[ii][1] // 2))
             self.cconv.append(conv_i)
             self.add_module('CNN_K{}_O{}'.format(kernel_size[ii], out_channels), conv_i)

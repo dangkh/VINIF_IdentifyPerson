@@ -16,55 +16,87 @@ import torch
 import sys
 from util.nets import *
 import random
-
+import scipy.io as sio
 
 from util.dataUtil import *
 from util.modelUtil import *
 from util.preproc import *
-
+from os.path import join
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 channelCombos = [
-    ['Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8'],
-    ['Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8', 'FT9', 'FC5', 'FC1', 'FC2', 'FC6', 'FT8', 'T7', 'C3', 'Cz', 'C4', 'T8', 'CP5' ,'CP1', 'CP2', 'CP6'],
-    ['O1', 'Oz', 'O2', 'P7', 'P3', 'Pz', 'P4', 'P8'],
-    ['O1', 'Oz', 'O2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'CP5', 'CP1', 'CP2', 'CP6', 'T7', 'T8', 'C3', 'C4', 'Cz', 'FT9', 'FT10', 'FC5', 'FC6', 'FC1', 'FC2'],
-    ['T7', 'C3', 'Cz', 'C4', 'T8', 'CP5' ,'CP1', 'CP2', 'CP6'],
-    ['FC5', 'FC1', 'FC2' ,'FC6', 'T7', 'C3', 'Cz', 'C4', 'T8']
+    ['Fz', 'Fp1', 'F7', 'F3', 'FC1', 'FC5', 'FC6', 'FC2', 'F4', 'F8', 'Fp2'],
+    ['Cz', 'C3', 'CP5', 'CP1', 'CP2', 'CP6', 'C4'],
+    ["Fp1", "Fp2", "Fz", "F3", "F4", "F7", "F8", "FC1", "FC2", "FC5",
+            "FC6", "Cz", "C3", "C4", "T3", "T4", "A1", "A2", "CP1", "CP2",
+            "CP5", "CP6", "Pz", "P3", "P4", "T5", "T6", "PO3", "PO4", "Oz",
+            "O1", "O2"]
 ]
 
-listChns = ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'FT9', 'T7', 'CP5', 'CP1', 'P3', 'P7', 'PO9', 'O1', 'Pz', 'Oz', 'O2', 'PO10', 'P8', 'P4', 'CP2', 'CP6', 'T8',
-     'FT10', 'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2']
+listChns = ["Fp1", "Fp2", "Fz", "F3", "F4", "F7", "F8", "FC1", "FC2", "FC5",
+            "FC6", "Cz", "C3", "C4", "T3", "T4", "A1", "A2", "CP1", "CP2",
+            "CP5", "CP6", "Pz", "P3", "P4", "T5", "T6", "PO3", "PO4", "Oz",
+            "O1", "O2"]
 
 listMethods = ['PSD + SVM', 'IHAR + SVM']
+event_id = {'left': 1,'right':2}
+
+def get_dataShu(subj,session,data_path):
+    da=sio.loadmat(join(data_path,'sub-'+str(subj).zfill(3)+'_ses-'+str(session).zfill(2)+'_task_motorimagery_eeg.mat'))
+    data=da['data']
+    labels=np.ravel(da['labels'])
+    return data,labels
+
+def mnebandFilter(data,labels,dataInfo):
+    si,sj,sk=data.shape
+    da=data.transpose(1,0,2)
+    da=da.reshape(sj,si*sk)
+    llen=data.shape[0]
+    event=np.zeros((llen,3))
+    info = mne.create_info(
+        ch_names=listChns,
+        ch_types="eeg",  # channel type
+        sfreq= 128  # frequency
+    )
+    raw = mne.io.RawArray(da, info)  # create raw
+    raw.filter(dataInfo['bandL'], dataInfo['bandR'], fir_design='firwin')
+    for i in range(llen):
+        event[i,0]=i*sk
+        event[i,2]=labels[i]
+    event=event.astype(int)
+    train_epoches = mne.Epochs(raw, event, event_id, 1, 3 + 0.004,
+                               baseline=None, preload=True)
+    train_data = train_epoches.get_data()
+    tmp = np.asarray(event)
+    train_data = train_data[np.where(tmp[:,2] == 2)]
+    return train_data
 
 
-def feature(X_train, X_test):
-    X_train = np.mean(np.log(np.abs(X_train)), axis = 1)
-    X_test = np.mean(np.log(np.abs(X_test)), axis = 1)
-    return X_train, X_test  
-
-# def conv(features, filterConv):
-#     return np.vstack([np.convolve(features[x], filterConv, 'valid') for x in range(features.shape[0])])
-
-# def extractPowerLog(features, windowSize = 5):
-#     ft = np.square(features)
-#     filterConv = np.ones(windowSize)
-#     ft2 = np.asarray([conv(ft[x], filterConv) for x in range(ft.shape[0])])
-#     ft2 = np.log( ft2 / windowSize)
-#     # ft2 =  ft2 / windowSize
-#     return ft2
+def extractDataShu_byInfo(info):
+    # info['numSub']
+    listData = []
+    dss = [0,3]
+    for idx in range(info['numSub']):
+        subData = []
+        for ts in range(2):
+            ss = dss[ts]
+            data, label = get_dataShu(idx+1, ss+1, info['input'])
+            train_data  = mnebandFilter(data, label, info)
+            transposeData = [x.T for x in train_data]
+            subData.append([ts, transposeData])
+        listData.append(subData)
+    return listData
 
 def trainCore(X_train, X_test, y_train, y_test, info):
     X_train, X_test, _, _ = normMat(X_train, X_test)
 
     if args.eaNorm == 'DEA':    
-        allMat = listRepresent(X_train, y_train, True)
+        allMat = listRepresent(X_train, y_train, False)
         UmeanMat = getV_SVD(allMat)
         
-        X_train = transformMat(X_train, UmeanMat, True)
-        X_test = transformMat(X_test, UmeanMat, True)
+        X_train = transformMat(X_train, UmeanMat, False)
+        X_test = transformMat(X_test, UmeanMat, False)
 
         X_train, X_test = EANorm(X_train, X_test, X_train)
 
@@ -76,13 +108,11 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     elif args.modelFeatures == 'IHAR':
         X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
     elif args.modelFeatures == 'APF':
-        # X_train, X_test = feature(X_train, X_test)
-        X_train = np.mean(extractPowerLog(X_train, 1), axis = 1)
-        X_test = np.mean(extractPowerLog(X_test, 1), axis = 1)
-
+        X_train = np.mean(np.log(np.abs(X_train)), axis = 1)
+        X_test = np.mean(np.log(np.abs(X_test)), axis = 1)
 
     if args.modelName == 'SVM':
-        return SVM(X_train, y_train, X_test, y_test, info['naiveClss'])
+        return SVM(X_train, y_train, X_test, y_test)
 
     elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
         n_samples, n_timestamp, n_channels = X_train.shape
@@ -140,89 +170,56 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train')
     parser.add_argument('--input', help='input data dir')
     parser.add_argument('--modelName', help='name of model : {}'.format(listMethods))
-    parser.add_argument('--naiveClss', help='name of primitive classifier : {}'.format([
-        'SVM_Linear', 'SVM_RBF', 'NearestNeighbor', 'NaiveBayes', 'RF', 'GaussianProcess', 'simpleNeuralNet']))
-    parser.add_argument('--smoothSize', help='size of smoothing window', default=1, type=int)
     parser.add_argument('--bandL', help='band filter', default=4.0, type=float)
     parser.add_argument('--bandR', help='band filter', default=50.0, type=float)
     parser.add_argument('--eaNorm', help='EA norm', default='False')
-    parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=3, type=int)
+    parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=2, type=int)
     parser.add_argument('--windowSize', help='windowSize', default=128, type=int)
-    parser.add_argument('--windowIHAR', help='windowIHAR', default=10, type=int)
-    parser.add_argument('--extractFixation', help='type of extraction in eeg. Fixation: True. All: False', default='False')
-    parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
-    parser.add_argument('--trainTestSeperate', help='train first then test. if not, train and test are splitted randomly', default='False')
     parser.add_argument('--trainTestSession', help='train test are splitted by session', default='False')
     parser.add_argument('--output', help='train test are splitted by session', default='./result.txt')
-    parser.add_argument('--numSub', help='number of Subject', default=5, type=int)
+    parser.add_argument('--numSub', help='number of Subject', default=25, type=int)
     parser.add_argument('--numChan', help='number of channel', default=-1, type=int)
     parser.add_argument('--modelFeatures', help='name of features : PSD, IHAR, APF, RAW', default='RAW')
     args = parser.parse_args()
     print(args)
-    '''
-    # python train.py --windowSize 128 --modelName PSD --bandL 0.1 --bandR 50 --extractFixation False --thinking False --trainTestSeperate False --trainTestSession False
-    '''
     listPaths = []
     numberObject = args.numSub
     counter = 0
 
+
     prePath = args.input
     for x in os.listdir(prePath):
-        if x != "BN001" and x != "K317" and x != "BN002" and x != "K299" and x != "K305":
+        if x[-3:] == 'mat':
             listPaths.append(prePath + '/' + x)
             counter += 1
             if counter > numberObject:
                 break
 
-    listPaths = sorted(listPaths)
-    tmpExtract = 'Fixation'
-    if not strtobool(args.extractFixation):
-        tmpExtract = 'All'
+    tmpExtract = 'All'
     typeTest = 'trainTestRandom'
-    if strtobool(args.trainTestSeperate):
-        typeTest = 'trainTestSeperate'
-    if strtobool(args.trainTestSession) and strtobool(args.trainTestSeperate):
+    if strtobool(args.trainTestSession):
         typeTest = 'trainTestSession'
 
-    dataName = f'./HMI_numberSub{str(args.numSub)}_band_{str(args.bandL)}_{str(args.bandR)}_channelType_{str(args.channelType)}_{typeTest}'
-    if strtobool(args.thinking):
-        dataName += '_thinking'
-    dataRaw = dataName +'_RAW.npy'
-    # duration
-    # if int(args.windowSize) != 128:
-    #     dataName += f'_size{args.windowSize}'
-    # normal
+    dataName = f'./SHU_numberSub{str(args.numSub)}_band_{str(args.bandL)}_{str(args.bandR)}_channelType_{str(args.channelType)}_{typeTest}_{args.windowSize}'
     dataLink = dataName + '.npy'
-    # test
-    # dataLink = 'test.npy'
-    print(dataLink)
+    # print(dataLink)
+
     info = {
-            'bandL': args.bandL,
-            'bandR': args.bandR,
+            'bandL': float(args.bandL),
+            'bandR': float(args.bandR),
             'windowSize': args.windowSize,
-            'listPaths': listPaths,
             'EA': str(args.eaNorm),
-            'extractFixation': strtobool(args.extractFixation),
             'channelType': channelCombos[args.channelType],
             'modelName': args.modelName, 
             'typeTest': typeTest,
             'numSub': args.numSub, 
-            'numChan': args.numChan, 
-            'dataset': 'hmi',
-            'naiveClss': args.naiveClss,
-            'smoothSize': args.smoothSize,
-            'thinking': strtobool(args.thinking)
+            'input': args.input,
+            'dataset': 'shu',
+            'numChan': args.numChan
         }
     if not os.path.exists(dataLink):
         # normal
-        datas = extractData_byInfo(info)
-
-        # vary window size
-        # if not os.path.exists(dataRaw):            
-        #     datas = extractData_byInfo(info)
-        #     np.save(dataRaw, datas)
-        # else:
-        #     datas = np.load(dataRaw, allow_pickle=True)    
+        datas = extractDataShu_byInfo(info)
         print("Number of subjects in data: ", len(datas))
         PreProDatas = preprocessDataInfo(datas, info)
         np.save(dataLink, PreProDatas)
@@ -237,36 +234,18 @@ if __name__ == "__main__":
             print("Training at {} round".format(testingTime))
             X_f, y_f = getData_All(PreProDatas)
             X_train, X_test, y_train, y_test = train_test_split(X_f, y_f, test_size=0.2, random_state= listSeed[testingTime])            
-            print(len(np.unique(y_train)))
-            print(np.unique(y_train))
             acc = trainCore(X_train, X_test, y_train, y_test, info)
             print(acc)
             listAcc.append(acc)
-        elif typeTest == 'trainTestSeperate':
+        elif typeTest == 'trainTestSession':
             print("Training at {} round".format(testingTime))
-            for scenario in range(5):
+            for scenario in range(2):
                 X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, scenario)
-                print(len(np.unique(y_train)))
-                print(np.unique(y_train))
-                # if int(args.numChan) != -1:
-                #     X_train = X_train[:, :, :int(args.numChan)]
-                #     X_test = X_test[:, :, :int(args.numChan)]
-                # else:
-                #     listChan2Index = [listChns.index(x) for x in channelCombos[args.channelType]]
-                #     X_train = X_train[:, :, listChan2Index]
-                #     X_test = X_test[:, :, listChan2Index]
-                print(X_train.shape)
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
+                # acc = trainCore(X_test, X_train, y_test, y_train, info)
                 print("Scenario {} with acc: {}".format(scenario, acc))
                 listAcc.append(acc)
             break
-        # else:
-        #     print("Training at {} round".format(testingTime))
-        #     setSeed(listSeed[testingTime])
-        #     X_train, y_train, X_test, y_test = getDataFuture(PreProDatas, info)
-        #     acc = trainCore(X_train, X_test, y_train, y_test, info)
-        #     print(" acc: {}".format( acc))
-        #     listAcc.append(acc)
 
     listAcc = np.asarray(listAcc)
     sourceFile = open(args.output, 'a')
