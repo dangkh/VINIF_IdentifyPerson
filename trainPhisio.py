@@ -119,7 +119,16 @@ def extractPowerLog(features, windowSize = 5):
     return ft2
 def feature(X_train, X_test):
     X_train = np.mean(np.log(np.abs(X_train)), axis = 1)
-    X_test = np.mean(np.log(np.abs(X_test)), axis = 1)
+    X_test = np.mean(np.log(np.abs(X_test)), axis = 1)    
+
+    # X_train1 = np.mean(np.log(np.abs(X_train)), axis = 2)
+    # X_train2 = np.std(np.log(np.abs(X_train)), axis = 2)
+    # X_train3 = np.argmax(np.log(np.abs(X_train)), axis = 2)
+    # X_train = np.hstack([ X_train1, X_train2, X_train3])
+    # X_test1 = np.mean(np.log(np.abs(X_test)), axis = 2)
+    # X_test2 = np.std(np.log(np.abs(X_test)), axis = 2)
+    # X_test3 = np.argmax(np.log(np.abs(X_test)), axis = 2)
+    # X_test = np.hstack([ X_test1, X_test2, X_test3])
     return X_train, X_test  
 
 def trainCore(X_train, X_test, y_train, y_test, info):
@@ -141,12 +150,27 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     elif args.modelFeatures == 'IHAR':
         X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
     elif args.modelFeatures == 'APF':
-        # X_train, X_test = feature(X_train, X_test)
-        X_train = extractPowerLog(X_train, info['smoothSize'])
-        X_test = extractPowerLog(X_test, info['smoothSize'])
+        X_train, X_test = feature(X_train, X_test)
+        # X_train = extractPowerLog(X_train, info['smoothSize'])
+        # X_test = extractPowerLog(X_test, info['smoothSize'])
         print(f"Train dataset has shape of {X_train.shape}")
 
     if args.modelName == 'SVM':
+        # listData = []
+        # listLb = []
+        # for ii in range(len(X_train)):
+        #     if y_train[ii] not in listLb:
+        #         listLb.append(y_train[ii])  
+        #         listData.append([])
+        #     index = listLb.index(y_train[ii])
+        #     listData[index].append(X_train[ii])
+
+
+        # for ii in range(10):
+        #     a = listData[ii]
+        #     plt.imshow(a, cmap='hot', interpolation='nearest')
+        #     plt.savefig(f"{ii}.png")
+
         return SVM(X_train, y_train, X_test, y_test, info["naiveClss"])
 
     elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
@@ -218,7 +242,7 @@ if __name__ == "__main__":
     parser.add_argument('--bandR', help='band filter', default=50.0, type=float)
     parser.add_argument('--eaNorm', help='EA norm', default='False')
     parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=4, type=int)
-    parser.add_argument('--windowSize', help='windowSize', default=128, type=int)
+    parser.add_argument('--windowSize', help='windowSize', default=300, type=int)
     parser.add_argument('--windowIHAR', help='windowIHAR', default=10, type=int)
     parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
     parser.add_argument('--trainTestSeperate', help='train first then test. if not, train and test are splitted randomly', default='False')
@@ -289,7 +313,7 @@ if __name__ == "__main__":
             listAcc.append(acc)
         elif typeTest == 'trainTestSeperate':
             print("Training at {} round".format(testingTime))
-            for scenario in range(1):
+            for scenario in range(5):
                 print("Validate on 5 scenario")
                 X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, scenario)
                 if int(args.numChan) != -1:

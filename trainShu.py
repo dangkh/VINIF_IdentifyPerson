@@ -112,6 +112,38 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         X_test = np.mean(np.log(np.abs(X_test)), axis = 1)
 
     if args.modelName == 'SVM':
+        listData = []
+        listLb = []
+        for ii in range(len(X_train)):
+            if y_train[ii] not in listLb:
+                listLb.append(y_train[ii])  
+                listData.append([])
+            index = listLb.index(y_train[ii])
+            listData[index].append(X_train[ii])
+
+
+        for ii in range(5):
+            a = listData[ii]
+            plt.imshow(a, cmap='hot', interpolation='nearest')
+            plt.savefig(f"{ii}.png")
+
+
+        listData = []
+        listLb = []
+        for ii in range(len(X_test)):
+            if y_test[ii] not in listLb:
+                listLb.append(y_test[ii])  
+                listData.append([])
+            index = listLb.index(y_test[ii])
+            listData[index].append(X_test[ii])
+
+
+        for ii in range(5):
+            a = listData[ii]
+            plt.imshow(a, cmap='hot', interpolation='nearest')
+            plt.savefig(f"{ii}_test.png")
+
+        print(X_train.shape, X_test.shape)
         return SVM(X_train, y_train, X_test, y_test)
 
     elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
