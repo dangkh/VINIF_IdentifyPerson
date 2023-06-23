@@ -123,7 +123,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 
 
         for ii in range(5):
-            a = listData[ii]
+            a = listData[ii][:80]
             plt.imshow(a, cmap='hot', interpolation='nearest')
             plt.savefig(f"{ii}.png")
 
@@ -139,7 +139,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 
 
         for ii in range(5):
-            a = listData[ii]
+            a = listData[ii][:80]
             plt.imshow(a, cmap='hot', interpolation='nearest')
             plt.savefig(f"{ii}_test.png")
 
