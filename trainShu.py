@@ -76,10 +76,10 @@ def mnebandFilter(data,labels,dataInfo):
 def extractDataShu_byInfo(info):
     # info['numSub']
     listData = []
-    dss = [0,3]
+    dss = [0,1,2,3]
     for idx in range(info['numSub']):
         subData = []
-        for ts in range(2):
+        for ts in range(len(dss)):
             ss = dss[ts]
             data, label = get_dataShu(idx+1, ss+1, info['input'])
             train_data  = mnebandFilter(data, label, info)
@@ -123,7 +123,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 
 
         for ii in range(5):
-            a = listData[ii][:80]
+            a = listData[ii]
             plt.imshow(a, cmap='hot', interpolation='nearest')
             plt.savefig(f"{ii}.png")
 
@@ -139,7 +139,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
 
 
         for ii in range(5):
-            a = listData[ii][:80]
+            a = listData[ii]
             plt.imshow(a, cmap='hot', interpolation='nearest')
             plt.savefig(f"{ii}_test.png")
 
@@ -271,7 +271,7 @@ if __name__ == "__main__":
             listAcc.append(acc)
         elif typeTest == 'trainTestSession':
             print("Training at {} round".format(testingTime))
-            for scenario in range(2):
+            for scenario in range(4):
                 X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, scenario)
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
                 # acc = trainCore(X_test, X_train, y_test, y_train, info)
