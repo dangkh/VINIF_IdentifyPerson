@@ -244,57 +244,27 @@ def IHAR(X_train, y_train, X_test, y_test, listChns):
     return X_train, y_train, X_test, y_test
 
 
-def listRepresent(X_train, y_train, reverse = False):
-    # tmp = []
-    # for label in np.unique(y_train):
-    #     tmplist = X_train[np.where(y_train == label)]
-    #     meanMat = np.mean( tmplist, axis = 0)
-    #     if reverse:
-    #         meanMat = meanMat.T
-    #     tmp.append(meanMat)
-    # return np.hstack(tmp)
-    tmp = []
-    for x in X_train:
-        tmp.append(x.T @ x)
-    return np.sum(tmp) / len(tmp)
+# def listRepresent(X_train, y_train, reverse = False):
+#     # tmp = []
+#     # for label in np.unique(y_train):
+#     #     tmplist = X_train[np.where(y_train == label)]
+#     #     meanMat = np.mean( tmplist, axis = 0)
+#     #     if reverse:
+#     #         meanMat = meanMat.T
+#     #     tmp.append(meanMat)
+#     # return np.hstack(tmp)
+#     tmp = []
+#     for x in X_train:
+#         tmp.append(x.T @ x)
+#     return np.sum(tmp) / len(tmp)
 
-def getV_SVD(matrix):
-    # tmpMat = np.matmul(matrix, matrix.T)
-    tmpMat = matrix
-    _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
-    UmeanMat = UmeanMat.T
-    return UmeanMat, Sigma_mean
+# def getV_SVD(matrix):
+#     # tmpMat = np.matmul(matrix, matrix.T)
+#     tmpMat = matrix
+#     _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
+#     UmeanMat = UmeanMat.T
+#     return UmeanMat, Sigma_mean
 
-def normMat(X_train, X_test):
-    mean = np.mean(X_train, axis=0, keepdims=True)
-    std = np.std(X_train, axis=0, keepdims=True)
-    X_train = (X_train - mean) / std
-    X_test = (X_test - mean) / std
-    return X_train, X_test, mean, std 
-
-def transformMat(X, Basis, reverse = False):
-    tmp = []
-    for ii in range(len(X)):
-        Xnew = np.copy(X[ii])
-        if reverse:
-            Xnew = Xnew.T
-        U_Test, eigenValue = getV_SVD(Xnew)
-        k = 0
-        for x in range(len(eigenValue)):
-            k = x
-            if eigen_vector[x] < 1:
-                break
-        k = 32
-        transformMatrix = np.matmul( U_Test, Basis.T)
-        Xnew = matmul_list([ Basis.T, transformMatrix, U_Test, Xnew])
-        tmp.append(Xnew)
-    return np.asarray(tmp)
-
-def EANorm(X_train, X_test):
-    normR = getNormR(X_train, X_train.shape[-1])
-    X_train = applyNorm(X_train, normR)
-    X_test = applyNorm(X_test, normR)
-    return X_train, X_test
 
 
 # def vis():

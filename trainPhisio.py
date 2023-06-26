@@ -31,11 +31,13 @@ from moabb.paradigms import MotorImagery
 # os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 channelCombos = [
-    ['C3', 'Cz', 'C4', 'CP1', 'CP2'], ['F3', 'F4', 'C3', 'C4'], ['Fp1', 'Fp2', 'F7',
-                                                                 'F3', 'F4', 'F8', 'T7', 'C3', 'Cz', 'C4', 'T8', 'P7', 'P3', 'Pz', 'P4', 'P8'],
-    ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'T7', 'CP5', 'CP1', 'P3', 'P7', 'O1', 'Pz', 'Oz', 'O2', 'P8', 'P4', 'CP2', 'CP6', 'T8', 
-    'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2'],
-     ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 
+    ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8', 'F7', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8'],
+    ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8', 'F7', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FT8', 'FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'T7', 'T8', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'TP7', 'TP8', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6'],
+    ['O1', 'Oz', 'O2', 'PO7', 'PO3', 'POz', 'PO4', 'PO8', 'P7', 'P5', 'P3', 'P1', 'Pz', 'P2', 'P4', 'P6', 'P8'],
+    ['O1', 'Oz', 'O2', 'PO7', 'PO3', 'POz', 'PO4', 'PO8', 'P7', 'P5', 'P3', 'P1', 'Pz', 'P2', 'P4', 'P6', 'P8', 'FT7', 'FT8', 'FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'T7', 'T8', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'TP7', 'TP8', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6'],
+    ['T7', 'T8', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'TP7', 'TP8', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6'],
+    ['FT7', 'FT8', 'FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'T7', 'T8', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6'],
+    ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 
             'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 
             'Fp1', 'Fpz', 'Fp2', 
             'AF7', 'AF3', 'AFz', 'AF4', 'AF8', 
@@ -44,6 +46,21 @@ channelCombos = [
             'P7', 'P5', 'P3', 'P1', 'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO3', 'POz', 'PO4', 'PO8', 
             'O1', 'Oz', 'O2', 'Iz']
 ]
+
+# channelCombos = [
+#     ['C3', 'Cz', 'C4', 'CP1', 'CP2'], ['F3', 'F4', 'C3', 'C4'], ['Fp1', 'Fp2', 'F7',
+#                                                                  'F3', 'F4', 'F8', 'T7', 'C3', 'Cz', 'C4', 'T8', 'P7', 'P3', 'Pz', 'P4', 'P8'],
+#     ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'T7', 'CP5', 'CP1', 'P3', 'P7', 'O1', 'Pz', 'Oz', 'O2', 'P8', 'P4', 'CP2', 'CP6', 'T8', 
+#     'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2'],
+#      ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 
+#             'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 
+#             'Fp1', 'Fpz', 'Fp2', 
+#             'AF7', 'AF3', 'AFz', 'AF4', 'AF8', 
+#             'F7', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FT8', 
+#             'T7', 'T8', 'T9', 'T10', 'TP7', 'TP8', 
+#             'P7', 'P5', 'P3', 'P1', 'Pz', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO3', 'POz', 'PO4', 'PO8', 
+#             'O1', 'Oz', 'O2', 'Iz']
+# ]
 
 listChns = ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 
             'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6', 
@@ -95,11 +112,10 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     X_train, X_test, _, _ = normMat(X_train, X_test)
     if args.eaNorm == 'DEA':
         allMat = listRepresent(X_train, y_train, False)
-        UmeanMat = getV_SVD(allMat)
+        UmeanMat, _ = getV_SVD(allMat)
         
         X_train = transformMat(X_train, UmeanMat, False)
         X_test = transformMat(X_test, UmeanMat, False)
-
         X_train, X_test = EANorm(X_train, X_test, X_train)
 
     elif args.eaNorm == 'EA':
@@ -135,6 +151,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         listModelName = []
         model = chooseModel(str(args.modelName), num_class=num_class, input_size=(1, X_train.shape[2], X_train.shape[3]))
         print("Model architecture >>>", model)
+        stopppp
         model.to(device)
         criterion = nn.CrossEntropyLoss()
         lr = 3e-4
@@ -181,7 +198,7 @@ if __name__ == "__main__":
     parser.add_argument('--bandL', help='band filter', default=4.0, type=float)
     parser.add_argument('--bandR', help='band filter', default=50.0, type=float)
     parser.add_argument('--eaNorm', help='EA norm', default='False')
-    parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=4, type=int)
+    parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=-1, type=int)
     parser.add_argument('--windowSize', help='windowSize', default=128, type=int)
     parser.add_argument('--windowIHAR', help='windowIHAR', default=10, type=int)
     parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
@@ -211,6 +228,7 @@ if __name__ == "__main__":
             'channelType': channelCombos[args.channelType],
             'modelName': args.modelName, 
             'typeTest': typeTest,
+            'dataset':'Phi',
             'numSub': args.numSub, 
             'numChan': args.numChan, 
             'thinking': strtobool(args.thinking)

@@ -269,14 +269,29 @@ def EANorm(X_train, X_test, refer):
 
 
 def transformMat(X, Basis, reverse = False):
+    # tmp = []
+    # for ii in range(len(X)):
+    #     Xnew = np.copy(X[ii])
+    #     if reverse:
+    #         Xnew = Xnew.T
+    #     U_Test, _ = getV_SVD(Xnew)
+
+    #     transformMatrix = np.matmul( U_Test, Basis.T)
+    #     Xnew = matmul_list([ Basis.T, transformMatrix, U_Test, Xnew])
+    #     tmp.append(Xnew)
+    # return np.asarray(tmp)
     tmp = []
     for ii in range(len(X)):
         Xnew = np.copy(X[ii])
         if reverse:
             Xnew = Xnew.T
-        U_Test = getV_SVD(Xnew)
-
-        transformMatrix = np.matmul( U_Test, Basis.T)
+        U_Test, eigenValue = getV_SVD(Xnew)
+        k = 0
+        for x in range(len(eigenValue)):
+            k = x
+            if eigenValue[x] < 1:
+                break
+        transformMatrix = np.matmul( U_Test[:, :k], Basis[:, :k].T)
         Xnew = matmul_list([ Basis.T, transformMatrix, U_Test, Xnew])
         tmp.append(Xnew)
     return np.asarray(tmp)
@@ -302,4 +317,4 @@ def getV_SVD(matrix):
     tmpMat = np.matmul(matrix, matrix.T)
     _, Sigma_mean, UmeanMat = np.linalg.svd(tmpMat , full_matrices=False)
     UmeanMat = UmeanMat.T
-    return UmeanMat
+    return UmeanMat, Sigma_mean

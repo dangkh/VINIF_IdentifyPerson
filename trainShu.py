@@ -16,38 +16,73 @@ import torch
 import sys
 from util.nets import *
 import random
-
+import scipy.io as sio
 
 from util.dataUtil import *
 from util.modelUtil import *
 from util.preproc import *
-
+from os.path import join
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 channelCombos = [
-    ['Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8'],
-    ['Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8', 'FT9', 'FC5', 'FC1', 'FC2', 'FC6', 'FT8', 'T7', 'C3', 'Cz', 'C4', 'T8', 'CP5' ,'CP1', 'CP2', 'CP6'],
-    ['O1', 'Oz', 'O2', 'P7', 'P3', 'Pz', 'P4', 'P8'],
-    ['O1', 'Oz', 'O2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'CP5', 'CP1', 'CP2', 'CP6', 'T7', 'T8', 'C3', 'C4', 'Cz', 'FT9', 'FT10', 'FC5', 'FC6', 'FC1', 'FC2'],
-    ['T7', 'C3', 'Cz', 'C4', 'T8', 'CP5' ,'CP1', 'CP2', 'CP6'],
-    ['FC5', 'FC1', 'FC2' ,'FC6', 'T7', 'C3', 'Cz', 'C4', 'T8']
+    ['Fz', 'Fp1', 'F7', 'F3', 'FC1', 'FC5', 'FC6', 'FC2', 'F4', 'F8', 'Fp2'],
+    ['Cz', 'C3', 'CP5', 'CP1', 'CP2', 'CP6', 'C4'],
+    ["Fp1", "Fp2", "Fz", "F3", "F4", "F7", "F8", "FC1", "FC2", "FC5",
+            "FC6", "Cz", "C3", "C4", "T3", "T4", "A1", "A2", "CP1", "CP2",
+            "CP5", "CP6", "Pz", "P3", "P4", "T5", "T6", "PO3", "PO4", "Oz",
+            "O1", "O2"]
 ]
 
-# channelCombos = [
-#     ['Fz', 'Fp1', 'F7', 'F3', 'FC1', 'FC5', 'FT9', 'FT10', 'FC6', 'FC2', 'F4', 'F8', 'Fp2'],
-#     ['P3', 'P7', 'PO9', 'Pz', 'PO10', 'P8', 'P4'],
-#     ['Cz', 'C3', 'CP5', 'CP1', 'CP2', 'CP6', 'C4'],
-#     ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'FT9', 'T7', 'CP5', 'CP1', 'P3', 'P7', 'PO9', 'O1', 'Pz', 'Oz', 'O2', 'PO10', 'P8', 'P4', 'CP2', 'CP6', 'T8',
-#      'FT10', 'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2'],
-#      ['T7', 'T8']
-# ]
-
-listChns = ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'FT9', 'T7', 'CP5', 'CP1', 'P3', 'P7', 'PO9', 'O1', 'Pz', 'Oz', 'O2', 'PO10', 'P8', 'P4', 'CP2', 'CP6', 'T8',
-     'FT10', 'FC6', 'C4', 'FC2', 'F4', 'F8', 'Fp2']
+listChns = ["Fp1", "Fp2", "Fz", "F3", "F4", "F7", "F8", "FC1", "FC2", "FC5",
+            "FC6", "Cz", "C3", "C4", "T3", "T4", "A1", "A2", "CP1", "CP2",
+            "CP5", "CP6", "Pz", "P3", "P4", "T5", "T6", "PO3", "PO4", "Oz",
+            "O1", "O2"]
 
 listMethods = ['PSD + SVM', 'IHAR + SVM']
+event_id = {'left': 1,'right':2}
 
+def get_dataShu(subj,session,data_path):
+    da=sio.loadmat(join(data_path,'sub-'+str(subj).zfill(3)+'_ses-'+str(session).zfill(2)+'_task_motorimagery_eeg.mat'))
+    data=da['data']
+    labels=np.ravel(da['labels'])
+    return data,labels
+
+def mnebandFilter(data,labels,dataInfo):
+    si,sj,sk=data.shape
+    da=data.transpose(1,0,2)
+    da=da.reshape(sj,si*sk)
+    llen=data.shape[0]
+    event=np.zeros((llen,3))
+    info = mne.create_info(
+        ch_names=listChns,
+        ch_types="eeg",  # channel type
+        sfreq=250  # frequency
+    )
+    raw = mne.io.RawArray(da, info)  # create raw
+    raw.filter(dataInfo['bandL'], dataInfo['bandR'], fir_design='firwin')
+    for i in range(llen):
+        event[i,0]=i*sk
+        event[i,2]=labels[i]
+    event=event.astype(int)
+    train_epoches = mne.Epochs(raw, event, event_id, 0, 4 - 0.004,
+                               baseline=None, preload=True)
+    train_data = train_epoches.get_data()
+    return train_data
+
+
+def extractDataShu_byInfo(info):
+    # info['numSub']
+    listData = []
+    for idx in range(info['numSub']):
+        subData = []
+        for ss in range(5):
+            data, label = get_dataShu(idx+1, ss+1, info['input'])
+            train_data  = mnebandFilter(data, label, info)
+            transposeData = [x.T for x in train_data]
+            subData.append([ss, transposeData])
+        listData.append(subData)
+    return listData
 
 def trainCore(X_train, X_test, y_train, y_test, info):
     X_train, X_test, _, _ = normMat(X_train, X_test)
@@ -59,20 +94,21 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         X_train = transformMat(X_train, UmeanMat, True)
         X_test = transformMat(X_test, UmeanMat, True)
 
-        X_train, X_test = EANorm(X_train, X_test)
+        X_train, X_test = EANorm(X_train, X_test, X_train)
 
     elif args.eaNorm == 'EA':
-        X_train, X_test = EANorm(X_train, X_test)
+        X_train, X_test = EANorm(X_train, X_test, X_train)
 
-    if args.modelName == 'PSD':
-        return PSD(X_train, y_train, X_test, y_test)
+    if args.modelFeatures == 'PSD':
+        X_train, y_train, X_test, y_test = PSD(X_train, y_train, X_test, y_test)
+    elif args.modelFeatures == 'IHAR':
+        X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
+    elif args.modelFeatures == 'APF':
+        X_train = np.mean(np.log(np.abs(X_train)), axis = 1)
+        X_test = np.mean(np.log(np.abs(X_test)), axis = 1)
 
-        
-    elif args.modelName == 'IHAR':
-        return IHAR(X_train, y_train, X_test, y_test, listChns)
-    elif args.modelName == 'WLD':
-        return -1
-        pass
+    if args.modelName == 'SVM':
+        return SVM(X_train, y_train, X_test, y_test)
 
     elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
         n_samples, n_timestamp, n_channels = X_train.shape
@@ -86,7 +122,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         num_class = len(np.unique(y_train))
 
         listModelName = []
-        model = chooseModel(str(args.modelName), num_class=num_class, input_size=(1, X_train.shape[2], X_train.shape[3]))
+        model = chooseModel(str(args.modelName), num_class=num_class+1, input_size=(1, X_train.shape[2], X_train.shape[3]))
         print("Model architecture >>>", model)
         model.to(device)
         criterion = nn.CrossEntropyLoss()
@@ -133,75 +169,53 @@ if __name__ == "__main__":
     parser.add_argument('--bandL', help='band filter', default=4.0, type=float)
     parser.add_argument('--bandR', help='band filter', default=50.0, type=float)
     parser.add_argument('--eaNorm', help='EA norm', default='False')
-    parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=3, type=int)
+    parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=2, type=int)
     parser.add_argument('--windowSize', help='windowSize', default=128, type=int)
-    parser.add_argument('--windowIHAR', help='windowIHAR', default=10, type=int)
-    parser.add_argument('--extractFixation', help='type of extraction in eeg. Fixation: True. All: False', default='False')
-    parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
-    parser.add_argument('--trainTestSeperate', help='train first then test. if not, train and test are splitted randomly', default='False')
-    parser.add_argument('--trainTestSession', help='train test are splitted by session', default='True')
+    parser.add_argument('--trainTestSession', help='train test are splitted by session', default='False')
     parser.add_argument('--output', help='train test are splitted by session', default='./result.txt')
+    parser.add_argument('--numSub', help='number of Subject', default=25, type=int)
+    parser.add_argument('--numChan', help='number of channel', default=-1, type=int)
+    parser.add_argument('--modelFeatures', help='name of features : PSD, IHAR, APF, RAW', default='RAW')
     args = parser.parse_args()
     print(args)
-    '''
-    # python train.py --windowSize 128 --modelName PSD --bandL 0.1 --bandR 50 --extractFixation False --thinking False --trainTestSeperate False --trainTestSession False
-    '''
     listPaths = []
-    numberObject = 50
+    numberObject = args.numSub
     counter = 0
+
 
     prePath = args.input
     for x in os.listdir(prePath):
-        if x != "BN001" and x != "K317" and x != "BN002" and x != "K299" and x != "K305":
+        if x[-3:] == 'mat':
             listPaths.append(prePath + '/' + x)
             counter += 1
             if counter > numberObject:
                 break
 
-    listPaths = sorted(listPaths)
-    tmpExtract = 'Fixation'
-    if not strtobool(args.extractFixation):
-        tmpExtract = 'All'
+    tmpExtract = 'All'
     typeTest = 'trainTestRandom'
-    if strtobool(args.trainTestSeperate):
-        typeTest = 'trainTestSeperate'
-    if strtobool(args.trainTestSession) and strtobool(args.trainTestSeperate):
+    if strtobool(args.trainTestSession):
         typeTest = 'trainTestSession'
 
-    dataName = './' + 'band_' + str(args.bandL) + '_' + str(args.bandR) + '_channelType_' + str(args.channelType) + '_' + typeTest + '_' + tmpExtract
-    if strtobool(args.thinking):
-        dataName += '_thinking'
-    dataRaw = dataName +'_RAW.npy'
-    # duration
-    # if int(args.windowSize) != 128:
-    # dataName += f'_size{args.windowSize}'
-    # normal
+    dataName = f'./SHU_numberSub{str(args.numSub)}_band_{str(args.bandL)}_{str(args.bandR)}_channelType_{str(args.channelType)}_{typeTest}'
     dataLink = dataName + '.npy'
-    # test
-    # dataLink = 'test.npy'
-    print(dataLink)
+    # print(dataLink)
+
     info = {
-            'bandL': args.bandL,
-            'bandR': args.bandR,
+            'bandL': float(args.bandL),
+            'bandR': float(args.bandR),
             'windowSize': args.windowSize,
-            'listPaths': listPaths,
             'EA': str(args.eaNorm),
-            'extractFixation': strtobool(args.extractFixation),
             'channelType': channelCombos[args.channelType],
             'modelName': args.modelName, 
             'typeTest': typeTest,
-            'thinking': strtobool(args.thinking)
+            'numSub': args.numSub, 
+            'input': args.input,
+            'dataset': 'shu',
+            'numChan': args.numChan
         }
     if not os.path.exists(dataLink):
         # normal
-        datas = extractData_byInfo(info)
-
-        # vary window size
-        # if not os.path.exists(dataRaw):            
-        #     datas = extractData_byInfo(info)
-        #     np.save(dataRaw, datas)
-        # else:
-        #     datas = np.load(dataRaw, allow_pickle=True)    
+        datas = extractDataShu_byInfo(info)
         print("Number of subjects in data: ", len(datas))
         PreProDatas = preprocessDataInfo(datas, info)
         np.save(dataLink, PreProDatas)
@@ -211,7 +225,6 @@ if __name__ == "__main__":
     listAcc = []
     listSeed = [x*500+15 for x in range(50)]
     numTest = 10
-
     for testingTime in range(numTest):
         if typeTest == 'trainTestRandom':
             print("Training at {} round".format(testingTime))
@@ -220,22 +233,14 @@ if __name__ == "__main__":
             acc = trainCore(X_train, X_test, y_train, y_test, info)
             print(acc)
             listAcc.append(acc)
-        elif typeTest == 'trainTestSeperate':
+        elif typeTest == 'trainTestSession':
             print("Training at {} round".format(testingTime))
-            for scenario in range(9):
+            for scenario in range(5):
                 X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, scenario)
-                print(X_train.shape)
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
                 print("Scenario {} with acc: {}".format(scenario, acc))
                 listAcc.append(acc)
             break
-        # else:
-        #     print("Training at {} round".format(testingTime))
-        #     setSeed(listSeed[testingTime])
-        #     X_train, y_train, X_test, y_test = getDataFuture(PreProDatas, info)
-        #     acc = trainCore(X_train, X_test, y_train, y_test, info)
-        #     print(" acc: {}".format( acc))
-        #     listAcc.append(acc)
 
     listAcc = np.asarray(listAcc)
     sourceFile = open(args.output, 'a')
