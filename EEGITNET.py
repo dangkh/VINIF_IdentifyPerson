@@ -159,7 +159,6 @@ def Network(Chans, Samples, out_type = 'single', num_class = 4):
     block = AveragePooling2D((4,1), data_format='Channels_first')(block)
     block = Dropout(drop_rate)(block) 
     embedded = Flatten()(block)
-
     out = Dense(out_class, activation = 'softmax', kernel_constraint = max_norm(0.25))(embedded)
 
     #========================================================================================

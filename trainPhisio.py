@@ -167,7 +167,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         X_train = np.transpose(X_train, (0, 2, 1))
         X_train = X_train[:,:,:,np.newaxis]
         X_test = X_test[:,:,:,np.newaxis]
-        print(len(np.unique(y_train)))
+        num_class = print(len(np.unique(y_train)))
 
         enc = OneHotEncoder()
         y_train = np.asarray(y_train).reshape(-1,1)
@@ -184,8 +184,8 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         All_AccuracyTest = []
         All_loss = []
         All_epochs = []
-        stop
-        model = Network(Chans, Samples, 'single', len(np.unique(y_train)))
+        
+        model = Network(Chans, Samples, 'single', num_class)
         model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
         mc = ModelCheckpoint('./Results/best_model.h5', monitor='val_loss', mode='min', save_best_only=True)
         fittedModel = model.fit(X_train, y_train, batch_size = 32, epochs = 10, 
