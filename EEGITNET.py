@@ -12,7 +12,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.optimizers import Adam
 from tensorflow_addons.layers import WeightNormalization
 from tensorflow.keras.utils import plot_model
-
+from keras import backend as K
 import random
 import time
 import numpy as np

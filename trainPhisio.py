@@ -167,7 +167,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         X_train = np.transpose(X_train, (0, 2, 1))
         X_train = X_train[:,:,:,np.newaxis]
         X_test = X_test[:,:,:,np.newaxis]
-        num_class = print(len(np.unique(y_train)))
+        num_class = len(np.unique(y_train))
 
         enc = OneHotEncoder()
         y_train = np.asarray(y_train).reshape(-1,1)
@@ -190,8 +190,9 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         mc = ModelCheckpoint('./Results/best_model.h5', monitor='val_loss', mode='min', save_best_only=True)
         fittedModel = model.fit(X_train, y_train, batch_size = 32, epochs = 10, 
                     verbose = 0)
-        stop
-        pass
+        probs = model.predict(X_test)
+        preds = probs.argmax(axis = -1)  
+        return round(100*np.mean(preds == y_test.argmax(axis=-1)),2)
     elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
         # print(X_train.shape)
         # X_train = np.expand_dims(X_train, axis=1)
