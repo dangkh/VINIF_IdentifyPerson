@@ -28,32 +28,36 @@ from moabb.paradigms import MotorImagery
 
 from mne.decoding import CSP
 
-import tensorflow as tf
-import tensorflow_addons as tfa
+# import tensorflow as tf
+# import tensorflow_addons as tfa
 
-from tensorflow.keras.models import Model, Sequential, load_model
-from tensorflow.keras import regularizers
-from tensorflow.keras.layers import Input, Dense, Activation, Dropout, SpatialDropout1D, SpatialDropout2D, BatchNormalization
-from tensorflow.keras.layers import Flatten, InputSpec, Layer, Concatenate, AveragePooling2D, MaxPooling2D, Reshape, Permute
-from tensorflow.keras.layers import Conv2D, LSTM , SeparableConv2D, DepthwiseConv2D, ConvLSTM2D, LayerNormalization
-from tensorflow.keras.layers import TimeDistributed, Lambda, AveragePooling1D, GRU, Attention, Dot, Add, Conv1D, Multiply
-from tensorflow.keras.constraints import max_norm, unit_norm 
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
-from tensorflow.keras.optimizers import Adam
-from tensorflow_addons.layers import WeightNormalization
-from tensorflow.keras.utils import plot_model
+# from tensorflow.keras.models import Model, Sequential, load_model
+# from tensorflow.keras import regularizers
+# from tensorflow.keras.layers import Input, Dense, Activation, Dropout, SpatialDropout1D, SpatialDropout2D, BatchNormalization
+# from tensorflow.keras.layers import Flatten, InputSpec, Layer, Concatenate, AveragePooling2D, MaxPooling2D, Reshape, Permute
+# from tensorflow.keras.layers import Conv2D, LSTM , SeparableConv2D, DepthwiseConv2D, ConvLSTM2D, LayerNormalization
+# from tensorflow.keras.layers import TimeDistributed, Lambda, AveragePooling1D, GRU, Attention, Dot, Add, Conv1D, Multiply
+# from tensorflow.keras.constraints import max_norm, unit_norm 
+# from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+# from tensorflow.keras.optimizers import Adam
+# from tensorflow_addons.layers import WeightNormalization
+# from tensorflow.keras.utils import plot_model
 
-import time
-import scipy.io
-import scipy
-from scipy import stats, fft, signal
-import sklearn
-from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
-from timeit import default_timer as timer
-from EEGITNET import *
+# import time
+# import scipy.io
+# import scipy
+# from scipy import stats, fft, signal
+# import sklearn
+# from sklearn.decomposition import PCA
+# from sklearn.cluster import KMeans
+# from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
+# from timeit import default_timer as timer
+# from EEGITNET import *
 
+from braindecode.models import EEGITNet
+from skorch.callbacks import LRScheduler
+
+from braindecode import EEGClassifier
 # os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 channelCombos = [
@@ -163,36 +167,66 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         return SVM(X_train, y_train, X_test, y_test)
 
     elif args.modelName == 'ITNET':
+        n_classes = len(np.unique(y_train))
+        n_channels= X_train.shape[-1]
+        input_window_samples = X_train.shape[1]
         X_test = np.transpose(X_test, (0, 2, 1))
         X_train = np.transpose(X_train, (0, 2, 1))
-        X_train = X_train[:,:,:,np.newaxis]
-        X_test = X_test[:,:,:,np.newaxis]
-        num_class = len(np.unique(y_train))
 
-        enc = OneHotEncoder()
-        y_train = np.asarray(y_train).reshape(-1,1)
-        y_test = np.asarray(y_test).reshape(-1,1)
-        enc.fit(y_train)
-        y_train = enc.transform(y_train).toarray()
-        y_test = enc.transform(y_test).toarray()
-        _, Chans, Samples, _ = X_train.shape
-        #===============================
-        # Training folds
-        All_model = []
-        All_AccuracyTrain = []
-        All_AccuracyVal = []
-        All_AccuracyTest = []
-        All_loss = []
-        All_epochs = []
+        # enc = OneHotEncoder()
+        # y_train = np.asarray(y_train).reshape(-1,1)
+        # y_test = np.asarray(y_test).reshape(-1,1)
+        # enc.fit(y_train)
+        # y_train = enc.transform(y_train).toarray()
+        # y_test = enc.transform(y_test).toarray()
+        # _, Chans, Samples, _ = X_train.shape
+        # #===============================
+        # # Training folds
+        # All_model = []
+        # All_AccuracyTrain = []
+        # All_AccuracyVal = []
+        # All_AccuracyTest = []
+        # All_loss = []
+        # All_epochs = []
         
-        model = Network(Chans, Samples, 'single', num_class)
-        model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-        mc = ModelCheckpoint('./Results/best_model.h5', monitor='val_loss', mode='min', save_best_only=True)
-        fittedModel = model.fit(X_train, y_train, batch_size = 32, epochs = 10, 
-                    verbose = 0)
-        probs = model.predict(X_test)
-        preds = probs.argmax(axis = -1)  
-        return round(100*np.mean(preds == y_test.argmax(axis=-1)),2)
+        # model = Network(Chans, Samples, 'single', num_class)
+        # model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
+        # mc = ModelCheckpoint('./Results/best_model.h5', monitor='val_loss', mode='min', save_best_only=True)
+        # fittedModel = model.fit(X_train, y_train, batch_size = 32, epochs = 10, 
+        #             verbose = 0)
+        # probs = model.predict(X_test)
+        # preds = probs.argmax(axis = -1)  
+        # return round(100*np.mean(preds == y_test.argmax(axis=-1)),2)
+        
+        model = EEGITNet(n_classes,
+                        n_channels,
+                        input_window_samples=input_window_samples)
+        model.cuda()
+        lr = 3e-3
+        weight_decay = 0
+        batch_size = 32
+        n_epochs = 50
+        clf = EEGClassifier(
+                            model,
+                            criterion=torch.nn.CrossEntropyLoss,
+                            optimizer=torch.optim.AdamW,
+                            train_split=None,
+                            optimizer__lr=lr,
+                            optimizer__weight_decay=weight_decay,
+                            batch_size=batch_size,
+                            callbacks=[
+                                "accuracy",
+                                ("lr_scheduler", LRScheduler("CosineAnnealingLR", T_max=n_epochs - 1)),
+                            ],
+                            device=device,
+                        )
+        clf.fit(X_train, y=np.asarray(y_train), epochs=n_epochs)
+
+        # score the Model after training
+        test_acc = clf.score(X_test, y=np.asarray(y_test))
+        print(f"Test acc: {(test_acc * 100):.2f}%") 
+        return test_acc
+
     elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
         # print(X_train.shape)
         # X_train = np.expand_dims(X_train, axis=1)
