@@ -54,7 +54,7 @@ from mne.decoding import CSP
 # from timeit import default_timer as timer
 # from EEGITNET import *
 
-from braindecode.models import EEGITNet
+from braindecode.models import EEGITNet, EEGInception, ShallowFBCSPNet
 from skorch.callbacks import LRScheduler
 
 from braindecode import EEGClassifier
@@ -166,50 +166,34 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     if args.modelName == 'SVM':
         return SVM(X_train, y_train, X_test, y_test)
 
-    elif args.modelName == 'ITNET':
+    elif args.modelName in['ITNET', 'FBCSP', 'INCEPTION']:
         n_classes = len(np.unique(y_train))
         n_channels= X_train.shape[-1]
         input_window_samples = X_train.shape[1]
         X_test = np.transpose(X_test, (0, 2, 1))
         X_train = np.transpose(X_train, (0, 2, 1))
-
-        # enc = OneHotEncoder()
-        # y_train = np.asarray(y_train).reshape(-1,1)
-        # y_test = np.asarray(y_test).reshape(-1,1)
-        # enc.fit(y_train)
-        # y_train = enc.transform(y_train).toarray()
-        # y_test = enc.transform(y_test).toarray()
-        # _, Chans, Samples, _ = X_train.shape
-        # #===============================
-        # # Training folds
-        # All_model = []
-        # All_AccuracyTrain = []
-        # All_AccuracyVal = []
-        # All_AccuracyTest = []
-        # All_loss = []
-        # All_epochs = []
-        
-        # model = Network(Chans, Samples, 'single', num_class)
-        # model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-        # mc = ModelCheckpoint('./Results/best_model.h5', monitor='val_loss', mode='min', save_best_only=True)
-        # fittedModel = model.fit(X_train, y_train, batch_size = 32, epochs = 10, 
-        #             verbose = 0)
-        # probs = model.predict(X_test)
-        # preds = probs.argmax(axis = -1)  
-        # return round(100*np.mean(preds == y_test.argmax(axis=-1)),2)
-        
-        model = EEGITNet(n_classes,
+        if args.modelName == 'ITNET':
+            model = EEGITNet(n_classes,
                         n_channels,
                         input_window_samples=input_window_samples)
-        model.cuda()
+        elif args.modelName == 'FBCSP':
+            model = ShallowFBCSPNet(n_channels,
+                        n_classes,
+                        input_window_samples=input_window_samples, final_conv_length=6, pool_time_length=25)
+        else:
+            model = EEGInception(n_channels,
+                        n_classes,
+                        input_window_samples=input_window_samples)
+
+        model.to(device)
         lr = 3e-3
         weight_decay = 0
-        batch_size = 32
+        batch_size = 64
         n_epochs = 50
         clf = EEGClassifier(
                             model,
                             criterion=torch.nn.CrossEntropyLoss,
-                            optimizer=torch.optim.AdamW,
+                            optimizer=torch.optim.Adam,
                             train_split=None,
                             optimizer__lr=lr,
                             optimizer__weight_decay=weight_decay,
@@ -226,13 +210,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         test_acc = clf.score(X_test, y=np.asarray(y_test))
         print(f"Test acc: {(test_acc * 100):.2f}%") 
         return test_acc
-
-    elif (info['modelName'] == 'CNN' or info['modelName'] == "CNN_LSTM"):
-        # print(X_train.shape)
-        # X_train = np.expand_dims(X_train, axis=1)
-        # X_test = np.expand_dims(X_test, axis=1)
-        # print(X_train.shape)
-        # stop
+    elif (info['modelName'] in ['CNN', 'CNN_LSTM']):
         n_samples, n_timestamp, n_channels = X_train.shape
         X_train = X_train.reshape((n_samples, n_timestamp, n_channels, 1))
         X_train = np.transpose(X_train, (0, 3, 1, 2))
