@@ -179,8 +179,26 @@ def trainModel(model, criterion, n_epochs, optimizer, scheduler, trainLoader, va
 
 
 
-def SVM(X_train, y_train, X_test, y_test):
+def SVM(X_train, y_train, X_test, y_test, clssName = "SVM_RBF"):
     clf = make_pipeline(StandardScaler(), SVC(kernel="linear", C=0.025))
+    if clssName == "SVM_RBF":
+        clf = make_pipeline(StandardScaler(), SVC(gamma='auto'))
+    elif clssName == "NearestNeighbor":
+        clf = KNeighborsClassifier(3)
+        clf = make_pipeline(StandardScaler(), clf)
+    elif clssName == "NaiveBayes":
+        clf = GaussianNB()
+        clf = make_pipeline(StandardScaler(), clf)
+    elif clssName == "RF":
+        clf = RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1)
+        clf = make_pipeline(StandardScaler(), clf)
+    elif clssName == "GaussianProcess":
+        clf = make_pipeline(StandardScaler(), SVC(kernel="poly", C=500, gamma='auto'))
+    elif clssName == "simpleNeuralNet":
+        clf = MLPClassifier(alpha=1, max_iter=1000)
+        clf = make_pipeline(StandardScaler(), clf)
+
+    # clf = make_pipeline(StandardScaler(), SVC(kernel="poly", gamma = 2))
     clf.fit(X_train, y_train)
     predicted = clf.predict(X_test)
     predicted = np.asarray(predicted)
