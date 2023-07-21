@@ -156,6 +156,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     elif args.modelFeatures == 'IHAR':
         X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
     elif args.modelFeatures == 'APF':
+        stop
         X_train = np.mean(np.log(np.abs(X_train)), axis = 1)
         X_test = np.mean(np.log(np.abs(X_test)), axis = 1)
     elif args.modelFeatures == 'CSP':
@@ -276,6 +277,7 @@ if __name__ == "__main__":
     parser.add_argument('--windowIHAR', help='windowIHAR', default=10, type=int)
     parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
     parser.add_argument('--trainTestSeperate', help='train first then test. if not, train and test are splitted randomly', default='False')
+    parser.add_argument('--deltaSize', help='deltaSize', default=1, type=int)
     parser.add_argument('--output', help='train test are splitted by session', default='./result.txt')
     args = parser.parse_args()
     print(args)
