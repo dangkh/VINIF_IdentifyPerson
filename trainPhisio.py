@@ -138,6 +138,28 @@ def extractDataPhisio_byInfo(info):
     return datas
 
 
+def mva(signal, size):
+    index = 0
+    moving_averages = []
+    # Loop through the array t o
+    #consider every window of size 3
+    while index < len(signal) - size + 1:
+        # Calculate the average of current window
+        window_average = round(np.sum(signal[
+          index:index+size]) / size, 2)
+        # Store the average of current
+        # window in moving average list
+        moving_averages.append(window_average)
+        # Shift window to right by one position
+        index += 1
+    return moving_averages
+
+def smooth(signals, size):
+    newSg = []
+    for ii in range(len(signals)):
+        newSg.append(mva(signals[ii], size))
+    return np.vstack(newSg)
+
 def trainCore(X_train, X_test, y_train, y_test, info):
     X_train, X_test, _, _ = normMat(X_train, X_test)
     if args.eaNorm == 'DEA':
@@ -156,8 +178,8 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     elif args.modelFeatures == 'IHAR':
         X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
     elif args.modelFeatures == 'APF':
-        X_train = np.mean(np.log(np.abs(X_train)), axis = 1)
-        X_test = np.mean(np.log(np.abs(X_test)), axis = 1)
+        X_train = np.mean(np.log(np.abs(smooth(X_train, info['deltaSize']))) , axis = 1)
+        X_test = np.mean(np.log(np.abs(smooth(X_train, info['deltaSize']))), axis = 1)
     elif args.modelFeatures == 'CSP':
         csp = CSP(n_components=10)
         X_train = csp.fit_transform(X_train, y_train)
@@ -173,6 +195,11 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         X_test = np.transpose(X_test, (0, 2, 1))
         X_train = np.transpose(X_train, (0, 2, 1))
         if args.modelName == 'ITNET':
+            # n_samples, n_timestamp, n_channels = X_train.shape
+            # X_train = X_train.reshape((n_samples, n_timestamp, n_channels, 1))
+
+            # n_samples, n_timestamp, n_channels = X_test.shape
+            # X_test = X_test.reshape((n_samples, n_timestamp, n_channels, 1))
             model = EEGITNet(n_classes,
                         n_channels,
                         input_window_samples=input_window_samples)
@@ -186,10 +213,10 @@ def trainCore(X_train, X_test, y_train, y_test, info):
                         input_window_samples=input_window_samples)
 
         model.to(device)
-        lr = 3e-3
-        weight_decay = 0
+        lr = 7e-2
+        weight_decay = 1e-5
         batch_size = 64
-        n_epochs = 50
+        n_epochs = 20
         clf = EEGClassifier(
                             model,
                             criterion=torch.nn.CrossEntropyLoss,
@@ -273,6 +300,7 @@ if __name__ == "__main__":
     parser.add_argument('--eaNorm', help='EA norm', default='False')
     parser.add_argument('--channelType', help='channel seclection in : {}'.format(channelCombos), default=-1, type=int)
     parser.add_argument('--windowSize', help='windowSize', default=128, type=int)
+    parser.add_argument('--deltaSize', help='deltaSize', default=1, type=int)
     parser.add_argument('--windowIHAR', help='windowIHAR', default=10, type=int)
     parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
     parser.add_argument('--trainTestSeperate', help='train first then test. if not, train and test are splitted randomly', default='False')
@@ -304,6 +332,7 @@ if __name__ == "__main__":
             'dataset':'Phi',
             'numSub': args.numSub, 
             'numChan': args.numChan, 
+            'deltaSize': args.deltaSize,
             'thinking': strtobool(args.thinking)
         }
     if not os.path.exists(dataLink):

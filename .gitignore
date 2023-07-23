@@ -6,3 +6,5 @@
 *.bat
 .DS_Store
 *.png
+*.json
+Official/
