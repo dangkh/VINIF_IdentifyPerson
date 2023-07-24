@@ -59,6 +59,8 @@ from skorch.callbacks import LRScheduler
 
 from braindecode import EEGClassifier
 # os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+from tqdm import tqdm
+
 
 channelCombos = [
     ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8', 'F7', 'F5', 'F3', 'F1', 'Fz', 'F2', 'F4', 'F6', 'F8'],
@@ -138,7 +140,7 @@ def extractDataPhisio_byInfo(info):
     return datas
 
 
-def mva(signal, size):
+def mva_signal(signal, size):
     index = 0
     moving_averages = []
     # Loop through the array t o
@@ -147,18 +149,26 @@ def mva(signal, size):
         # Calculate the average of current window
         window_average = round(np.sum(signal[
           index:index+size]) / size, 2)
+        if window_average < 0.00001:
+            window_average = 0.00001
         # Store the average of current
         # window in moving average list
         moving_averages.append(window_average)
         # Shift window to right by one position
         index += 1
-    return moving_averages
+    return np.asarray(moving_averages)
 
-def smooth(signals, size):
+def mva(signals, size):
     newSg = []
     for ii in range(len(signals)):
-        newSg.append(mva(signals[ii], size))
+        newSg.append(mva_signal(signals[ii], size))
     return np.vstack(newSg)
+
+def smooth(trials, size):
+    newTrials = []
+    for ii in tqdm(range(len(trials))):
+        newTrials.append(mva(trials[ii], size))
+    return np.asarray(newTrials)
 
 def trainCore(X_train, X_test, y_train, y_test, info):
     X_train, X_test, _, _ = normMat(X_train, X_test)
@@ -178,15 +188,15 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     elif args.modelFeatures == 'IHAR':
         X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
     elif args.modelFeatures == 'APF':
-        X_train = np.mean(np.log(np.abs(smooth(X_train, info['deltaSize']))) , axis = 1)
-        X_test = np.mean(np.log(np.abs(smooth(X_train, info['deltaSize']))), axis = 1)
+        X_train = np.mean(np.log((smooth(np.abs(X_train), info['deltaSize']))) , axis = 1)
+        X_test = np.mean(np.log((smooth(np.abs(X_test), info['deltaSize']))), axis = 1)
     elif args.modelFeatures == 'CSP':
         csp = CSP(n_components=10)
         X_train = csp.fit_transform(X_train, y_train)
         X_test = csp.transform(X_test)
 
     if args.modelName == 'SVM':
-        return SVM(X_train, y_train, X_test, y_test)
+        return SVM(X_train, y_train, X_test, y_test, info['naiveClss'])
 
     elif args.modelName in['ITNET', 'FBCSP', 'INCEPTION']:
         n_classes = len(np.unique(y_train))
@@ -304,6 +314,8 @@ if __name__ == "__main__":
     parser.add_argument('--windowIHAR', help='windowIHAR', default=10, type=int)
     parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
     parser.add_argument('--trainTestSeperate', help='train first then test. if not, train and test are splitted randomly', default='False')
+    parser.add_argument('--naiveClss', help='name of primitive classifier : {}'.format([
+        'SVM_Linear', 'SVM_RBF', 'NearestNeighbor', 'NaiveBayes', 'RF', 'GaussianProcess', 'simpleNeuralNet']))
     parser.add_argument('--output', help='train test are splitted by session', default='./result.txt')
     args = parser.parse_args()
     print(args)
@@ -333,6 +345,7 @@ if __name__ == "__main__":
             'numSub': args.numSub, 
             'numChan': args.numChan, 
             'deltaSize': args.deltaSize,
+            'naiveClss': args.naiveClss,
             'thinking': strtobool(args.thinking)
         }
     if not os.path.exists(dataLink):

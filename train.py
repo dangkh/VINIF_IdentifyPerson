@@ -27,7 +27,7 @@ from braindecode.models import EEGITNet, EEGInception, ShallowFBCSPNet
 from skorch.callbacks import LRScheduler
 
 from braindecode import EEGClassifier
-
+from tqdm import tqdm
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 channelCombos = [
@@ -55,8 +55,7 @@ listChns = ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'FT9', 'T7', 'CP5
 
 listMethods = ['PSD + SVM', 'IHAR + SVM']
 
-
-def mva(signal, size):
+def mva_signal(signal, size):
     index = 0
     moving_averages = []
     # Loop through the array t o
@@ -65,18 +64,26 @@ def mva(signal, size):
         # Calculate the average of current window
         window_average = round(np.sum(signal[
           index:index+size]) / size, 2)
+        if window_average < 0.00001:
+            window_average = 0.00001
         # Store the average of current
         # window in moving average list
         moving_averages.append(window_average)
         # Shift window to right by one position
         index += 1
-    return moving_averages
+    return np.asarray(moving_averages)
 
-def smooth(signals, size):
+def mva(signals, size):
     newSg = []
     for ii in range(len(signals)):
-        newSg.append(mva(signals[ii], size))
+        newSg.append(mva_signal(signals[ii], size))
     return np.vstack(newSg)
+
+def smooth(trials, size):
+    newTrials = []
+    for ii in tqdm(range(len(trials))):
+        newTrials.append(mva(trials[ii], size))
+    return np.asarray(newTrials)
 
 def trainCore(X_train, X_test, y_train, y_test, info):
     X_train, X_test, _, _ = normMat(X_train, X_test)
@@ -99,7 +106,7 @@ def trainCore(X_train, X_test, y_train, y_test, info):
         X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
     elif args.modelFeatures == 'APF':
         X_train = np.mean(np.log(np.abs(smooth(X_train, info['deltaSize']))) , axis = 1)
-        X_test = np.mean(np.log(np.abs(smooth(X_train, info['deltaSize']))), axis = 1)
+        X_test = np.mean(np.log(np.abs(smooth(X_test, info['deltaSize']))), axis = 1)
 
     if args.modelName == 'SVM':
         return SVM(X_train, y_train, X_test, y_test)
@@ -220,6 +227,8 @@ if __name__ == "__main__":
     parser.add_argument('--thinking', help='thinking: True. resting: False', default='False')
     parser.add_argument('--trainTestSeperate', help='train first then test. if not, train and test are splitted randomly', default='False')
     parser.add_argument('--trainTestSession', help='train test are splitted by session', default='False')
+    parser.add_argument('--naiveClss', help='name of primitive classifier : {}'.format([
+        'SVM_Linear', 'SVM_RBF', 'NearestNeighbor', 'NaiveBayes', 'RF', 'GaussianProcess', 'simpleNeuralNet']))
     parser.add_argument('--output', help='train test are splitted by session', default='./result.txt')
     args = parser.parse_args()
     print(args)
@@ -227,7 +236,7 @@ if __name__ == "__main__":
     # python train.py --windowSize 128 --modelName PSD --bandL 0.1 --bandR 50 --extractFixation False --thinking False --trainTestSeperate False --trainTestSession False
     '''
     listPaths = []
-    numberObject = 5
+    numberObject = 20
     counter = 0
 
     prePath = args.input
@@ -272,6 +281,7 @@ if __name__ == "__main__":
             'typeTest': typeTest,
             'dataset': None,
             'deltaSize': args.deltaSize,
+            'naiveClss': args.naiveClss,
             'thinking': strtobool(args.thinking)
         }
     if not os.path.exists(dataLink):
