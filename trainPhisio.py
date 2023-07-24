@@ -141,22 +141,41 @@ def extractDataPhisio_byInfo(info):
 
 
 def mva_signal(signal, size):
-    index = 0
     moving_averages = []
+    newSg = np.append(signal, [0]*(size+2))
+    index, r = 0, size
     # Loop through the array t o
     #consider every window of size 3
-    while index < len(signal) - size + 1:
-        # Calculate the average of current window
-        window_average = round(np.sum(signal[
-          index:index+size]) / size, 2)
-        if window_average < 0.00001:
-            window_average = 0.00001
-        # Store the average of current
-        # window in moving average list
+    cumsum = np.sum(newSg[index:r])
+    while index < len(signal):
+        actualSize = max(min(len(signal), r) - index, 1)
+        # print(f'index {index} cumulative sum {cumsum} , list {newSg[index:r]}')
+        window_average = cumsum / actualSize
+        # if window_average < 0.00001:
+        #     window_average = 0.00001
         moving_averages.append(window_average)
-        # Shift window to right by one position
+        cumsum = cumsum - newSg[index] + newSg[r+1]
         index += 1
+        r += 1
     return np.asarray(moving_averages)
+
+# def mva_signal(signal, size):
+#     index = 0
+#     moving_averages = []
+#     # Loop through the array t o
+#     #consider every window of size 3
+#     while index < len(signal) - size + 1:
+#         # Calculate the average of current window
+#         window_average = round(np.sum(signal[
+#           index:index+size]) / size, 2)
+#         if window_average < 0.00001:
+#             window_average = 0.00001
+#         # Store the average of current
+#         # window in moving average list
+#         moving_averages.append(window_average)
+#         # Shift window to right by one position
+#         index += 1
+#     return np.asarray(moving_averages)
 
 def mva(signals, size):
     newSg = []
@@ -188,8 +207,8 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     elif args.modelFeatures == 'IHAR':
         X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
     elif args.modelFeatures == 'APF':
-        X_train = np.mean(np.log((smooth(np.abs(X_train), info['deltaSize']))) , axis = 1)
-        X_test = np.mean(np.log((smooth(np.abs(X_test), info['deltaSize']))), axis = 1)
+        X_train = np.mean(np.log(np.square(smooth(X_train, info['deltaSize']))), axis = 1)
+        X_test = np.mean(np.log(np.square(smooth(X_test, info['deltaSize']))), axis = 1)
     elif args.modelFeatures == 'CSP':
         csp = CSP(n_components=10)
         X_train = csp.fit_transform(X_train, y_train)

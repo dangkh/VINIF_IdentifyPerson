@@ -56,21 +56,22 @@ listChns = ['Cz', 'Fz', 'Fp1', 'F7', 'F3', 'FC1', 'C3', 'FC5', 'FT9', 'T7', 'CP5
 listMethods = ['PSD + SVM', 'IHAR + SVM']
 
 def mva_signal(signal, size):
-    index = 0
     moving_averages = []
+    newSg = np.append(signal, [0]*(size+2))
+    index, r = 0, size
     # Loop through the array t o
     #consider every window of size 3
-    while index < len(signal) - size + 1:
-        # Calculate the average of current window
-        window_average = round(np.sum(signal[
-          index:index+size]) / size, 2)
-        if window_average < 0.00001:
-            window_average = 0.00001
-        # Store the average of current
-        # window in moving average list
+    cumsum = np.sum(newSg[index:r])
+    while index < len(signal):
+        actualSize = max(min(len(signal), r) - index, 1)
+        # print(f'index {index} cumulative sum {cumsum} , list {newSg[index:r]}')
+        window_average = cumsum / actualSize
+        # if window_average < 0.00001:
+        #     window_average = 0.00001
         moving_averages.append(window_average)
-        # Shift window to right by one position
+        cumsum = cumsum - newSg[index] + newSg[r+1]
         index += 1
+        r += 1
     return np.asarray(moving_averages)
 
 def mva(signals, size):
@@ -105,11 +106,12 @@ def trainCore(X_train, X_test, y_train, y_test, info):
     elif args.modelFeatures == 'IHAR':
         X_train, y_train, X_test, y_test = IHAR(X_train, y_train, X_test, y_test, listChns)           
     elif args.modelFeatures == 'APF':
-        X_train = np.mean(np.log(np.abs(smooth(X_train, info['deltaSize']))) , axis = 1)
-        X_test = np.mean(np.log(np.abs(smooth(X_test, info['deltaSize']))), axis = 1)
+        X_train = np.mean(np.log(np.square(smooth(X_train, info['deltaSize']))), axis = 1)
+        X_test = np.mean(np.log(np.square(smooth(X_test, info['deltaSize']))), axis = 1)
 
     if args.modelName == 'SVM':
         return SVM(X_train, y_train, X_test, y_test)
+
     elif args.modelName in['ITNET', 'FBCSP', 'INCEPTION']:
         n_classes = len(np.unique(y_train))
         n_channels= X_train.shape[-1]
@@ -236,7 +238,7 @@ if __name__ == "__main__":
     # python train.py --windowSize 128 --modelName PSD --bandL 0.1 --bandR 50 --extractFixation False --thinking False --trainTestSeperate False --trainTestSession False
     '''
     listPaths = []
-    numberObject = 20
+    numberObject = 30
     counter = 0
 
     prePath = args.input
@@ -257,7 +259,7 @@ if __name__ == "__main__":
     if strtobool(args.trainTestSession) and strtobool(args.trainTestSeperate):
         typeTest = 'trainTestSession'
 
-    dataName = './' + 'band_' + str(args.bandL) + '_' + str(args.bandR) + '_channelType_' + str(args.channelType) + '_' + typeTest + '_' + tmpExtract
+    dataName = f'./{numberObject}_band_{args.bandL}_{args.bandR}_channelType_{args.channelType}_{typeTest}_{tmpExtract}'
     if strtobool(args.thinking):
         dataName += '_thinking'
     dataRaw = dataName +'_RAW.npy'
@@ -314,7 +316,7 @@ if __name__ == "__main__":
             listAcc.append(acc)
         elif typeTest == 'trainTestSeperate':
             print("Training at {} round".format(testingTime))
-            for scenario in range(9):
+            for scenario in range(1):
                 X_train, y_train, X_test, y_test = getDataScenario(PreProDatas, scenario)
                 print(X_train.shape)
                 acc = trainCore(X_train, X_test, y_train, y_test, info)
